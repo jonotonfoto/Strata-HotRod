@@ -71,9 +71,21 @@ Keep whatever the config's `"env"` already has; add these keys beside it. Values
 | `STRATA_TAIL_MIN_TOKENS=32` | what counts as "very short" for the line above | the value 32 is **not** measured; the default (256) also skipped the plan on ordinary short follow-up reads |
 | `STRATA_RAM_STATS=1` | one diagnostic line per request (step 4) | - |
 
-Not in the block above: `STRATA_RAM_ADAPT_KEEP=1` (keeps the agent conversation's experts in RAM while a helper request
-such as a context summary runs). It is in the code but its measurement was not finished when this file was written;
-see SPEED_DECLINE_PLAN.md, section 7, before turning it on.
+The long measurement (2026-11-25, `tools/speed_decline/results/27-long.txt` and `29-longctl.txt`): an agent-shaped load
+of 110 turns through four context compressions, the context reaching 110-112K tokens four times, the same build with
+and without the variables, one run each. Without them the speed fell from 63.7 to 38.0 tok/s over 65 minutes and the
+file blobs per token rose from 3.2 to 13.5. With the block above plus `STRATA_RAM_ADAPT_KEEP=1` it stayed at 60 tok/s
+for the whole 53 minutes (55.5-63.4 by part) with 1.7-3.2 file blobs per token. The run does not say which variable
+gives which share.
+
+Not in the block above:
+
+- `STRATA_RAM_ADAPT_KEEP=1` (keeps the agent conversation's experts in RAM while a helper request such as a context
+  summary runs). It was on in the long run above and did no harm there, but its own effect was not shown: the two runs
+  made to show it (a 7,700-8,000-token summary with and without it) both ran at 54-59 tok/s after the summary.
+- `STRATA_LOAN_SPILL=1` (upstream's opt-in). Do not add it to this block: with it the refills freed 19,155 RAM places
+  in one 22-turn load instead of 226, 1,183 of 12,956 were still empty at the end, and the first answers after the
+  compression ran at 43.9 tok/s instead of 59.9.
 
 When these apply: the engine keeps part of the experts in RAM and reads the rest from the SSD (`--resident-budget-gib`
 in the config's `"args"`, the usual case when RAM is smaller than the model), on one GPU, with `--adapt-async 1`.
@@ -106,8 +118,8 @@ fixes are for.
   a prompt read are slow.
 - A client that changes text in the middle of the conversation makes the engine read it again from the last
   checkpoint (seen: 73-77K tokens, about 130 s, on every turn).
-- A very long helper request between two turns (seen: a 13,003-token summary) still pulls the RAM set toward itself;
-  `STRATA_RAM_ADAPT_KEEP` is meant for that and is not measured yet.
+- After a very long helper request between two turns (seen live: a 13,003-token summary) the next answers ran at
+  18-30 tok/s. The tests did not reproduce this, so neither its cause nor a cure is established.
 - On Windows the file tier's read-ahead workers do not exist (`set_io_prefetch` has a Linux-only body), so predicted
   experts are neither read ahead nor promoted into RAM. Not changed here.
 

@@ -1,0 +1,42 @@
+== 04:54:50 m-aux: config cfg-m-aux.json extra: STRATA_DECODE_TIMING=1 STRATA_VERIFY_PROFILE=1
+server stopped, engine exited after 0 s
+learned state restored to the snapshot
+loaded=1 after 35 s
+aux test aux
+04:58:02 load: long answer            prompt  78150, gen 1500,  150.8 s
+04:58:07 short answer (baseline 1)    prompt  78150, gen  200,    5.2 s
+04:58:12 short answer (baseline 2)    prompt  78150, gen  200,    5.1 s
+04:58:20 unrelated small request 1    prompt    538, gen    4,    7.2 s
+04:58:24 short answer after it (1)    prompt  78150, gen  200,    4.1 s
+04:58:27 short answer after it (2)    prompt  78150, gen  200,    3.8 s
+04:58:34 unrelated small request 2    prompt    538, gen    4,    7.1 s
+04:58:38 short answer after it (1)    prompt  78150, gen  200,    3.8 s
+04:58:42 short answer after it (2)    prompt  78150, gen  200,    3.9 s
+-- engine run starts at log line 39243: engine-test2\strata.exe
+line   ctx   reuse  read  rd_s |  gen  tps  acc% | hit%  look/t | RAMb/t  FILEb/t  MB/t | skip/t | kvRAM MiB/t kvhit | rounds sw/round ms | refill vramfree
+=== engine start 2026-11-25 04:54:57
+39351  78150      0 78150 127.5 | 1500  64.9   67 | 87.2   606.2 |  105.0     2.8  111.0 |   10.9 |   0.00     - |  152  3257  112.5 |  2222  1022
+39512  78150  78145     5   1.7 |  200  58.3   67 | 83.5   605.1 |   83.5     0.3    0.6 |   13.1 |   5.94 97.53 |  172  3850  114.7 |     -   862
+39532  78150  78145     5   1.7 |  200  59.7   71 | 84.8   582.2 |   76.6     0.3    0.7 |   12.2 |   0.77 97.54 |  194  4233  114.2 |     -     -
+39555    538      0   538   7.0 |    4  28.3   50 | 77.5   692.5 | 1930.5   119.0 1513.6 |   28.8 |  16.50 97.68 |  195  4264  114.1 |   484     -
+39574  78150  78145     5   0.5 |  200  57.0   71 | 85.6   587.7 |   72.3     0.4    1.7 |   11.5 |  -7.01 89.93 |  214  4737  116.6 |     -     -
+39593  78150  78145     5   0.4 |  200  60.2   67 | 84.8   611.6 |   77.6     0.3    0.8 |   11.6 |   1.72 94.45 |  234  5160  118.2 |     -     -
+39615    538      0   538   7.0 |    4  25.9   50 | 79.4   689.5 | 1903.0   122.2 1499.8 |   31.8 |  30.55 96.33 |  235  5160  117.7 |   484     -
+39635  78150  78145     5   0.3 |  200  59.1   74 | 85.7   574.8 |   69.0     0.3    1.3 |   12.2 |  -2.33 89.93 |  254  5529  119.2 |     -     -
+39654  78150  78145     5   0.4 |  200  57.9   61 | 87.2   639.6 |   67.4     0.5    1.1 |   12.2 |   1.88 93.80 |  276  5969  119.6 |     -     -
+strata serve: resident RAM: 49 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12832 experts held in RAM, 124 places free; before a window the adaptive tier was idle 214 times and busy 649, 211 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 4696 to RAM (exchanged), 41 to the file tier, 0 kept a RAM copy; the refills freed 260 RAM places, 136 were filled agai
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: resident RAM: 52 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12836 experts held in RAM, 120 places free; before a window the adaptive tier was idle 234 times and busy 709, 231 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 5119 to RAM (exchanged), 41 to the file tier, 0 kept a RAM copy; the refills freed 260 RAM places, 140 were filled agai
+strata serve: prompt tail: 533 tokens, 15043 experts not in VRAM among its hottest; the refill took 484 of them (the rest of the loan back as before), usage seeded
+strata serve: resident RAM: 52 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12812 experts held in RAM, 144 places free; before a window the adaptive tier was idle 235 times and busy 710, 231 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 5162 to RAM (exchanged), 62 to the file tier, 0 kept a RAM copy; the refills freed 284 RAM places, 140 were filled agai
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: resident RAM: 62 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12835 experts held in RAM, 121 places free; before a window the adaptive tier was idle 254 times and busy 766, 249 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 5465 to RAM (exchanged), 64 to the file tier, 0 kept a RAM copy; the refills freed 284 RAM places, 163 were filled agai
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: resident RAM: 67 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12846 experts held in RAM, 110 places free; before a window the adaptive tier was idle 276 times and busy 830, 270 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 5905 to RAM (exchanged), 64 to the file tier, 0 kept a RAM copy; the refills freed 284 RAM places, 174 were filled agai
+server stopped, engine exited after 7 s
+== 04:58:55 m-aux finished

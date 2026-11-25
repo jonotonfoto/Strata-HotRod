@@ -1,0 +1,107 @@
+== 04:14:03 m-ctl: config cfg-m-ctl.json extra: STRATA_DECODE_TIMING=1 STRATA_VERIFY_PROFILE=1
+server stopped, engine exited after 0 s
+learned state restored to the snapshot
+loaded=1 after 35 s
+04:16:48 A step  0: prompt  69096 (cached 0), gen  600, 124.3 s
+04:17:19 A step  1: prompt  71443 (cached 69091), gen 1200, 31.2 s
+04:17:39 A step  2: prompt  73517 (cached 71438), gen  500, 19.7 s
+04:18:11 A step  3: prompt  76606 (cached 73512), gen 1200, 32.7 s
+04:18:36 A step  4: prompt  82103 (cached 76601), gen  600, 24.9 s
+04:19:07 A step  5: prompt  85155 (cached 82098), gen 1200, 30.4 s
+04:19:26 A step  6: prompt  87118 (cached 85150), gen  500, 19.7 s
+04:20:01 A step  7: prompt  91815 (cached 87113), gen 1200, 34.7 s
+04:20:21 A step  8: prompt  93485 (cached 91810), gen  600, 20.0 s
+04:20:48 A step  9: prompt  98294 (cached 93480), gen  723, 27.3 s
+04:21:07 A step 10: prompt  99873 (cached 98289), gen  500, 18.5 s
+04:21:31 A step 11: prompt 101668 (cached 99868), gen  578, 24.5 s
+04:21:59 A step 12: prompt 104139 (cached 101663), gen  498, 21.0 s
+04:22:33 A step 13: prompt 106017 (cached 104134), gen 1200, 34.1 s
+04:22:55 A step 14: prompt 108135 (cached 106012), gen  500, 21.4 s
+04:23:14 A step 15: prompt 109847 (cached 108130), gen  387, 19.3 s
+04:24:23 compression 1 summary: prompt 31683, gen 593, 68.9 s
+04:25:27 B1 step 16: prompt  35363 (cached 6992), gen  600, 64.1 s
+04:26:01 B1 step 17: prompt  37926 (cached 35358), gen 1200, 33.9 s
+04:26:27 B1 step 18: prompt  39845 (cached 37921), gen  500, 25.6 s
+04:27:02 B1 step 19: prompt  41804 (cached 39840), gen 1200, 35.7 s
+04:27:23 B1 step 20: prompt  43542 (cached 41799), gen  578, 20.9 s
+04:27:46 B1 step 21: prompt  45896 (cached 43537), gen  513, 22.6 s
+done: 24 records in sim-ctl.json
+step ph  max  ctx     read  rd_s | gen   tok/s | hit%% | RAM/t FILE/t  MB/t | ms/win wait  host(jobs cpu) tok/win
+  0  A   600  69096  69096 113.9 |  600   58.9 | 86.0 | 168.3   6.5  260.3 |  40.4  19.4  14.8 ( 1.8 12.1) 2.38
+  1  A  1200  71443   2352  10.6 | 1200   58.5 | 84.8 |  81.7   2.6   14.2 |  38.1  17.4  15.8 ( 3.5 11.5) 2.23
+  2  A   500  73517   2079  11.0 |  500   57.9 | 84.6 |  90.4   3.3   36.3 |  35.8  17.3  13.9 ( 3.0 10.2) 2.07
+  3  A  1200  76606   3094  12.6 | 1200   60.1 | 83.8 |  82.0   3.6   20.1 |  42.7  17.9  19.5 ( 5.4 13.2) 2.57
+  4  A   600  82103   5502  15.1 |  600   61.7 | 87.1 |  82.6   3.8   38.6 |  37.1  18.2  13.9 ( 3.0 10.1) 2.29
+  5  A  1200  85155   3057  11.4 | 1182   63.2 | 86.7 |  70.7   2.8   13.8 |  37.0  17.9  14.1 ( 3.1 10.2) 2.34
+  6  A   500  87118   1968  10.5 |  500   54.6 | 83.5 |  98.7   3.9   25.3 |  36.6  17.2  14.7 ( 2.9 11.1) 2.00
+  7  A  1200  91815   4702  13.2 | 1182   56.1 | 85.2 |  84.4   3.1   14.1 |  35.9  17.6  13.5 ( 2.4 10.3) 2.01
+  8  A   600  93485   1675   9.9 |  600   59.7 | 84.9 |  89.5   3.7   17.5 |  38.7  17.9  15.7 ( 3.1 11.8) 2.31
+  9  A  1200  98294   4814  14.3 |  705   56.0 | 84.4 |  94.6   4.4   30.3 |  40.2  17.8  17.5 ( 4.7 12.0) 2.25
+ 10  A   500  99873   1584   9.9 |  500   58.6 | 87.6 |  79.1   3.4   20.7 |  37.1  18.3  13.9 ( 3.8  9.3) 2.17
+ 11  A  1200 101668   1800  10.0 |  578   40.3 | 82.5 |  85.2  12.0   34.3 |  59.3  18.2  35.5 (21.5 13.2) 2.39
+ 12  A   600 104139   2476   9.4 |  498   43.5 | 83.9 |  77.8  13.1   45.4 |  70.3  19.1  45.5 (29.7 14.8) 3.06
+ 13  A  1200 106017   1883   9.2 | 1182   48.2 | 83.7 |  80.8   7.7   19.0 |  46.5  17.7  23.7 (10.9 12.0) 2.24
+ 14  A   500 108135   2123  11.2 |  500   49.4 | 85.6 |  89.2   7.4   33.1 |  42.3  17.7  19.8 ( 8.3 10.8) 2.09
+ 15  A  1200 109847   1717  10.7 |  387   45.6 | 84.2 |  88.3   9.1   43.1 |  45.2  17.5  23.1 (12.2 10.2) 2.06
+ 16  B1   600  35363  28371  52.8 |  600   53.2 | 84.7 | 111.3   9.9  131.8 |  45.3  17.2  23.2 (10.2 12.2) 2.41
+ 17  B1  1200  37926   2568  10.3 | 1200   50.9 | 86.1 |  75.4   6.9   22.7 |  44.2  17.2  21.9 ( 9.8 11.3) 2.25
+ 18  B1   500  39845   1924  10.0 |  500   32.1 | 80.9 |  83.8  17.4   66.1 | 106.6  18.9  82.1 (62.3 18.7) 3.42
+ 19  B1  1200  41804   1964  10.3 | 1182   47.2 | 82.8 |  79.2   8.5   24.4 |  45.9  16.9  24.2 (11.9 11.5) 2.17
+ 20  B1   600  43542   1743  10.2 |  578   54.2 | 86.8 |  76.5   7.5   35.6 |  44.8  17.6  22.1 (10.7 10.7) 2.43
+ 21  B1  1200  45896   2359  11.5 |  513   46.7 | 87.7 |  80.2   8.9   46.4 |  45.0  17.9  22.1 (11.6  9.8) 2.10
+
+part                               | n | tok/s short  long   all | hit%  | FILE/t | ms/win  wait  host  jobs
+A1: tool loop, first half          |  8 |  58.3       59.4  59.0 |  85.2 |    3.5 |  38.0   17.8  15.1   3.2
+A2: tool loop, second half         |  8 |  52.2       47.6  49.5 |  84.5 |    7.5 |  46.3   17.9  23.3  10.7
+B1: after compression 1, first 3   |  3 |  41.0       50.9  45.6 |  84.6 |    9.9 |  54.3   17.5  31.7  18.1
+B1: after compression 1, later     |  3 |  54.2       47.1  48.7 |  84.9 |    8.3 |  45.5   17.3  23.2  11.5
+other request: {'phase': 'A-aux', 'prompt': 273, 'gen': 4, 's': 6.7}
+other request: {'phase': 'C-summary', 'prompt': 31683, 'gen': 593, 's': 68.9}
+-- engine run starts at log line 36551: engine-test2\strata.exe
+line   ctx   reuse  read  rd_s |  gen  tps  acc% | hit%  look/t | RAMb/t  FILEb/t  MB/t | skip/t | kvRAM MiB/t kvhit | rounds sw/round ms | refill vramfree
+=== engine start 2026-11-25 04:14:09
+36660  69096      0 69096 113.9 |  600  58.9   62 | 86.0   640.6 |  168.3     6.5  260.3 |   12.1 |   0.00     - |   82  2290  123.4 |  2222     -
+36822  71443  69091  2352  10.6 | 1200  58.5   67 | 84.8   593.9 |   81.7     2.6   14.2 |   12.9 |   0.56 96.73 |  259  6882  118.6 |   712   799
+36844  73517  71438  2079  11.0 |  500  57.9   74 | 84.6   554.5 |   90.4     3.3   36.3 |   13.8 |   1.16 97.85 |  338  8862  116.5 |   680     -
+36864  76606  73512  3094  12.6 | 1200  60.1   73 | 83.8   576.2 |   82.0     3.6   20.1 |   14.1 |   0.21 97.94 |  490 13155  121.3 |   810     -
+36884  82103  76601  5502  15.1 |  600  61.7   65 | 87.1   613.0 |   82.6     3.8   38.6 |   11.7 |   0.98 98.10 |  576 14908  120.1 |  1105     -
+36904  85155  82098  3057  11.4 |  688  62.4   72 | 86.7   570.1 |   73.6     3.1   21.9 |   11.0 |   0.54 98.10 |  677 17265  118.5 |   778     -
+36923  85861  85842    19   0.2 |  494  64.4   66 | 86.9   619.0 |   66.6     2.4    2.5 |   11.9 |   0.62 98.15 |  741 18619  118.7 |     -     -
+36943  87118  85150  1968  10.5 |  500  54.6   66 | 83.5   586.3 |   98.7     3.9   25.3 |   13.9 |   0.48 98.19 |  822 20576  118.3 |   647     -
+36963  91815  87113  4702  13.2 |  688  55.2   60 | 85.2   624.9 |   93.8     3.8   23.0 |   12.9 |   0.36 98.21 |  937 22657  117.2 |  1007     -
+36979  92521  92502    19   0.2 |  494  57.3   51 | 87.5   700.0 |   71.3     2.1    1.9 |   11.6 |   0.61 98.26 | 1016 24059  116.5 |     -     -
+36999  93485  91810  1675   9.9 |  600  59.7   68 | 84.9   595.1 |   89.5     3.7   17.5 |   11.6 |   0.28 98.33 | 1103 25837  116.6 |   614     -
+37019  98294  93480  4814  14.3 |  692  56.3   67 | 84.4   599.3 |   93.0     4.4   30.7 |   12.5 |   0.23 98.40 | 1204 27790  117.0 |  1007     -
+37035  99004  98985    19   0.2 |   13  42.4   62 | 80.5   573.7 |  175.5     7.6   10.0 |   19.7 |  35.60 98.35 | 1207 27871  117.0 |     -     -
+37054  99873  98289  1584   9.9 |  500  58.6   65 | 87.6   607.3 |   79.1     3.4   20.7 |   10.3 |   0.07 98.35 | 1283 29462  116.8 |   614     -
+37080 101668  99868  1800  10.0 |  578  40.3   70 | 82.5   579.5 |   85.2    12.0   34.3 |   16.4 |   0.45 98.35 | 1361 31986  120.6 |   647     -
+37101    273      0   273   6.3 |    4  16.0   50 | 69.5   677.2 | 1526.8   117.8 1089.1 |   43.8 |  63.58 98.36 | 1362 32035  120.7 |   451     -
+37120 104139 101663  2476   9.4 |  498  43.5   79 | 83.9   549.9 |   77.8    13.1   45.4 |   14.7 |  -9.85 89.83 | 1414 34096  124.4 |   712     -
+37139 106017 104134  1883   9.2 |  691  44.9   63 | 83.7   610.4 |   90.1     9.0   27.9 |   15.3 |   0.75 96.42 | 1518 36746  126.2 |   647     -
+37155 106726 106707    19   0.2 |  491  54.0   65 | 85.5   620.4 |   67.8     6.0    6.4 |   12.3 |   0.60 97.79 | 1585 38215  126.6 |     -     -
+37175 108135 106012  2123  11.2 |  500  49.4   62 | 85.6   621.6 |   89.2     7.4   33.1 |   12.3 |   0.53 97.98 | 1663 39918  126.8 |   680     -
+37195 109847 108130  1717  10.7 |  387  45.6   76 | 84.2   543.6 |   88.3     9.1   43.1 |   12.7 |   0.64 98.10 | 1722 41556  127.4 |   614     -
+37223  31683      0 31683  57.3 |  593  51.5   73 | 83.4   577.8 |  114.5    10.9  136.0 |   13.7 |   0.42 98.06 | 1793 43925  128.8 |  2222     -
+37247  35363   6992 28371  52.8 |  600  53.2   71 | 84.7   579.9 |  111.3     9.9  131.8 |   11.4 |  -2.16 98.44 | 1874 45772  129.3 |  2222     -
+37270  37926  35358  2568  10.3 | 1200  50.9   60 | 86.1   641.6 |   75.4     6.9   22.7 |   11.9 |   0.00 98.45 | 2047 49875  130.0 |   745     -
+37290  39845  37921  1924  10.0 |  500  32.1   83 | 80.9   530.2 |   83.8    17.4   66.1 |   16.6 |   0.32 99.25 | 2094 51904  134.4 |   647     -
+37310  41804  39840  1964  10.3 |  688  44.3   66 | 82.8   595.5 |   91.1    10.0   36.5 |   13.6 |   0.11 99.30 | 2197 54733  135.3 |   647     -
+37326  42510  42491    19   0.2 |  494  52.0   61 | 86.9   638.1 |   62.7     6.4    7.6 |   11.2 |   0.29 99.31 | 2272 56266  135.0 |     -     -
+37346  43542  41799  1743  10.2 |  578  54.2   70 | 86.8   587.8 |   76.5     7.5   35.6 |   10.3 |   0.11 99.35 | 2351 57626  135.0 |   614     -
+37366  45896  43537  2359  11.5 |  513  46.7   55 | 87.7   668.5 |   80.2     8.9   46.4 |   12.7 |   0.12 99.40 | 2431 59007  135.0 |   712     -
+strata serve: prompt tail: 268 tokens, 12550 experts not in VRAM among its hottest; the refill took 451 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 2471 tokens, 20743 experts not in VRAM among its hottest; the refill took 712 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 1878 tokens, 20593 experts not in VRAM among its hottest; the refill took 647 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: prompt tail: 2118 tokens, 20570 experts not in VRAM among its hottest; the refill took 680 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 1712 tokens, 20175 experts not in VRAM among its hottest; the refill took 614 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 8126 tokens, 23391 experts not in VRAM among its hottest; the refill took 2222 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 4814 tokens, 23197 experts not in VRAM among its hottest; the refill took 2222 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 2563 tokens, 21491 experts not in VRAM among its hottest; the refill took 745 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 1919 tokens, 20649 experts not in VRAM among its hottest; the refill took 647 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 1959 tokens, 21369 experts not in VRAM among its hottest; the refill took 647 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: prompt tail: 1738 tokens, 20808 experts not in VRAM among its hottest; the refill took 614 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 2354 tokens, 21296 experts not in VRAM among its hottest; the refill took 712 of them (the rest of the loan back as before), usage seeded
+server stopped, engine exited after 7 s
+== 04:27:58 m-ctl finished

@@ -8270,7 +8270,11 @@ bool ArenaExpertSource::open(const std::string& pack_dir, int64_t n_layers, int6
             ok = std::fwrite(pad.data(), 1, pad.size(), f) == pad.size();
         }
         if (f) ok = std::fclose(f) == 0 && ok;
-        if (ok) ok = std::rename(tmp.c_str(), path.c_str()) == 0;
+        if (ok) {   // LOCAL WINDOWS FIX: std::rename does not replace an existing file on Windows
+            std::error_code rename_ec;
+            std::filesystem::rename(tmp, path, rename_ec);
+            ok = !rename_ec;
+        }
         if (!ok) std::remove(tmp.c_str());
         std::fprintf(stderr, "strata generate: STRATA_ARENA_MMAP: %s %s (the next start maps it)\n",
                      ok ? "wrote" : "could NOT write", path.c_str());

@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <system_error>
 
 namespace strata::core::subfit_learn {
 
@@ -665,7 +667,10 @@ bool Learner::save(const std::string& path, uint64_t fp, std::string& err) const
     }
     const bool ok = std::fwrite(o.data(), 1, o.size(), f) == o.size();
     std::fclose(f);
-    if (!ok || std::rename(tmp.c_str(), path.c_str()) != 0) {
+    // LOCAL WINDOWS FIX: std::rename does not replace an existing file on Windows (only the first save worked)
+    std::error_code rename_ec;
+    if (ok) std::filesystem::rename(tmp, path, rename_ec);
+    if (!ok || rename_ec) {
         err = "subfit learn: cannot finish " + path;
         std::remove(tmp.c_str());
         return false;

@@ -103,6 +103,19 @@
 #include <windows.h>
 #include <psapi.h>
 #include <io.h>
+#include <cstdlib>
+// LOCAL WINDOWS PATCH (not upstream): this file calls setenv() and sysconf(), which Windows does not have.
+static inline int setenv(const char* k, const char* v, int overwrite) {
+    if (!overwrite && std::getenv(k) != nullptr) return 0;
+    return _putenv_s(k, v) == 0 ? 0 : -1;
+}
+enum { _SC_PHYS_PAGES = 1, _SC_PAGE_SIZE = 2 };
+static inline long sysconf(int name) {
+    MEMORYSTATUSEX m;
+    m.dwLength = sizeof m;
+    if (!GlobalMemoryStatusEx(&m)) return -1;
+    return name == _SC_PHYS_PAGES ? (long) (m.ullTotalPhys / 4096ull) : 4096L;
+}
 #else
 #include <unistd.h>
 #include <cerrno>

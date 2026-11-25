@@ -16691,6 +16691,13 @@ int main(int argc, char** argv) {
             double dt_adapt_wait = 0, dt_adapt_join = 0;   // the tier's wait before a window / join after the draft (ms, summed)
             const int64_t dt_sw0 = ajob ? a_swapped : adapt_nswaps;
             int64_t dec_windows = 0, dec_T = 0;
+            // STRATA_WIN_RAMP=1 (diagnostic, opt-in, with STRATA_DECODE_TIMING): the request's windows in growing groups
+            // (1-5, 6-10, 11-20, ...), so the first windows of an answer can be told from the settled ones.  One line per
+            // request; nothing is measured that the timing line does not already measure.
+            static const bool win_ramp_on = dec_timing && std::getenv("STRATA_WIN_RAMP") != nullptr;
+            struct RampRec { int64_t win, tok; double ms; DecSnap s; };
+            std::vector<RampRec> ramp_recs;
+            if (win_ramp_on) ramp_recs.push_back(RampRec{0, 0, 0.0, ds0});
             const int64_t decode_hits0 = drive.d.cache_hits;
             // CS-T: the RAM and file tiers of this request (the mmap source; 0 with the arena)
             const int64_t ram0 = src.ram_reads(), files0 = src.file_reads();
@@ -17852,6 +17859,9 @@ int main(int argc, char** argv) {
                     auto msd = [](Clock::time_point a0, Clock::time_point b0) { return std::chrono::duration<double, std::milli>(b0 - a0).count(); };
                     dt_run += msd(tw0, tw1); dt_commit += msd(tw1, tw2); dt_draft += msd(tw2, tw3);
                     ++dec_windows; dec_T += merged ? 1 : T;   // a merged window's prompt rows are not decode rows
+                    if (win_ramp_on && (dec_windows == 5 || dec_windows == 10 || dec_windows == 20 || dec_windows == 40 ||
+                                        dec_windows == 80 || dec_windows == 160 || dec_windows == 320))
+                        ramp_recs.push_back(RampRec{dec_windows, produced_n, msd(d0, tw3), dec_snap()});
                 }
                 pcie_auto_step(req_pcie_frac);   // the default share, refined from the CPU pool's speed (PcieAuto); a request's own share is left alone
                 if (adapt_thr.joinable()) {
@@ -17955,6 +17965,19 @@ int main(int argc, char** argv) {
             if (dec_timing && dec_windows > 0) {
                 const DecSnap d1 = dec_snap();
                 const double w = (double) dec_windows, L = (double) g.n_layers;
+                if (win_ramp_on && !ramp_recs.empty()) {
+                    if (ramp_recs.back().win != dec_windows) ramp_recs.push_back(RampRec{dec_windows, produced_n, decode_ms, d1});
+                    std::fprintf(stderr, "strata decode ramp (windows: ms/window, tokens/window, GPU-reach wait, jobs, CPU, CPU experts per layer-window):");
+                    for (size_t i = 1; i < ramp_recs.size(); ++i) {
+                        const RampRec& ra = ramp_recs[i - 1];
+                        const RampRec& rb = ramp_recs[i];
+                        const double n = (double) (rb.win - ra.win);
+                        std::fprintf(stderr, " %lld-%lld: %.1f %.2f %.1f %.1f %.1f %.2f;", (long long) ra.win + 1, (long long) rb.win,
+                                     (rb.ms - ra.ms) / n, (double) (rb.tok - ra.tok) / n, (rb.s.wait - ra.s.wait) / n,
+                                     (rb.s.jobs - ra.s.jobs) / n, (rb.s.run - ra.s.run) / n, (double) (rb.s.misses - ra.s.misses) / (n * L));
+                    }
+                    std::fprintf(stderr, "\n");
+                }
                 std::fprintf(stderr, "strata decode timing: %lld windows, avg T %.2f, %.2f tokens/window, %.2f ms/window = "
                                      "verify %.2f (GPU-reach wait %.2f + per-layer host %.2f [plan %.2f actq %.2f jobs %.2f "
                                      "CPU %.2f] + stage %.2f) + commit/emit %.2f + draft %.2f; per layer-window: CPU experts "

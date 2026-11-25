@@ -2651,6 +2651,38 @@ static bool lookahead_promote_env() {
     return v == nullptr || std::atoi(v) != 0;
 }
 
+// The three switches below are opt-in and change nothing when unset (docs/SPEED_DECLINE.md, docs/SPEED_DECLINE_PLAN.md).
+// STRATA_RAM_STATS=1: one diagnostic line per request about the RAM copy and the asynchronous adaptive tier.
+static bool ram_stats_env() {
+    static const bool on = [] { const char* v = std::getenv("STRATA_RAM_STATS"); return v != nullptr && std::atoi(v) != 0; }();
+    return on;
+}
+// STRATA_RAM_UPKEEP_GAP=1: the asynchronous adaptive tier leaves one tick between two rounds when the RAM copy's upkeep has
+// something to do (STRATA_RAM_ADAPT, or promotions to publish).  That upkeep runs before a window only while no round is in
+// flight, and with a round every window (--adapt-every 1) a round that ends starts the next one at the same boundary: the
+// upkeep never ran (measured: STRATA_RAM_ADAPT=4 moved 0 experts; with --adapt-every 4 it moved 2,908 in the same run).
+static bool ram_upkeep_gap_env() {
+    static const bool on = [] { const char* v = std::getenv("STRATA_RAM_UPKEEP_GAP"); return v != nullptr && std::atoi(v) != 0; }();
+    return on;
+}
+// (the same variable the decode loop reads for its own static: how many experts STRATA_RAM_ADAPT may move before a window)
+static int ram_adapt_env_n() {
+    static const int n = [] { const char* e = std::getenv("STRATA_RAM_ADAPT"); return e != nullptr ? std::max(0, std::atoi(e)) : 0; }();
+    return n;
+}
+// STRATA_TAIL_GUARD=1: the end-of-read plan that hands the lent cache slots to the prompt tail's experts (STRATA_PROMPT_TAIL)
+// is not made from a read that was cancelled - its counts cover only the layers the read had reached, so nearly every slot
+// went to those layers (measured: VRAM hits 74% -> 46%, 49.9 -> 20.2 tok/s until the next complete read) - nor from a last
+// chunk shorter than STRATA_TAIL_MIN_TOKENS (default 256): a 13-token tail named 3,240 experts and took 2,222 slots.
+static bool tail_guard_env() {
+    static const bool on = [] { const char* v = std::getenv("STRATA_TAIL_GUARD"); return v != nullptr && std::atoi(v) != 0; }();
+    return on;
+}
+static int64_t tail_min_tokens_env() {
+    static const int64_t n = [] { const char* v = std::getenv("STRATA_TAIL_MIN_TOKENS"); return v != nullptr ? (int64_t) std::max(0, std::atoi(v)) : (int64_t) 256; }();
+    return n;
+}
+
 // SPEC-recheck-cheap change 2 (STRATA_RECHECK_PREFETCH): a cut row's replaced picks are queued for a read ahead of the exact successor on the
 // expert source's read-ahead (ExpertSource::warm, the look-ahead tail read's path: RAM staging, then the card by the cache fill).  Per request
 // counts (the stats line takes them): queued, already resident in the RAM copy, repeats, dropped past the cap.
@@ -11550,6 +11582,9 @@ int main(int argc, char** argv) {
         std::vector<float> a_usage;
         std::vector<int32_t> a_res;
         int64_t a_win = 0, a_last = 0, a_rounds = 0, a_swapped = 0;
+        // STRATA_RAM_STATS (counted only when it is on): windows that found the tier idle / busy at the RAM upkeep's check, the
+        // ticks STRATA_RAM_UPKEEP_GAP left between rounds, where the tier's evicted experts went, RAM places the refills freed
+        int64_t rs_idle = 0, rs_busy = 0, rs_gap = 0, rs_out_ram = 0, rs_out_file = 0, rs_out_kept = 0, rs_refill_freed = 0;
         double a_ms = 0;                  // wall time from a round's start to its flip, summed (the "ms/round" stat)
         Clock::time_point a_t0;
         std::atomic<bool> a_err{false};
@@ -11808,6 +11843,11 @@ int main(int argc, char** argv) {
                                          (int) w.layer, (int) w.in, (int) w.out);
                             return false;
                         }
+                        if (ram_stats_env()) {   // where the evicted expert is from now on: RAM (the exchange), the file, or its own RAM copy
+                            if (w.exchange) ++rs_out_ram;
+                            else if (!a_arena && !src.has_resident(w.layer, w.out)) ++rs_out_file;
+                            else ++rs_out_kept;
+                        }
                         host_res[out] = strata::core::kNotResident;   // the CPU computes it from the next window on
                         srcp->prefetch(w.layer, w.out);
                         aswaps[k++] = w;
@@ -11882,6 +11922,13 @@ int main(int argc, char** argv) {
                     a_ms += std::chrono::duration<double, std::milli>(Clock::now() - a_t0).count();
                     aswaps.clear();
                     astate = AState::Idle;
+                    // STRATA_RAM_UPKEEP_GAP=1 (opt-in): the next round starts at the next tick, not here, so the RAM copy's
+                    // upkeep before the next window finds no round in flight (its own guard, unchanged).  Not while draining,
+                    // and only when that upkeep has something to do.
+                    if (ram_upkeep_gap_env() && !drain && !a_arena && (ram_adapt_env_n() > 0 || src.promotions_pending())) {
+                        ++rs_gap;
+                        return true;
+                    }
                     continue;   // a round due now starts at this same boundary
                 }
             }
@@ -14879,7 +14926,7 @@ int main(int argc, char** argv) {
                 if (o.resident_budget > 0 && src.complement_ready())
                     for (const auto& [i, slot] : p.lent) {
                         (void) slot;
-                        (void) src.release_resident_place(i / g.n_expert, i % g.n_expert);
+                        if (src.release_resident_place(i / g.n_expert, i % g.n_expert)) ++rs_refill_freed;
                     }
 #if defined(_WIN32)
                 // The copies have landed: the file pages touched by the loan need not stay in the working set.
@@ -14933,6 +14980,7 @@ int main(int argc, char** argv) {
             const bool prompt_tail_env = prompt_tail_env_set && !(o.batch > 0 && batch_on());
             int64_t tail_cand_n = 0, tail_in_vram = 0;   // the tail-hot experts not in VRAM, and those the refill now holds
             bool tail_planned = false;
+            int tail_guard_why = 0;   // STRATA_TAIL_GUARD: 1 the plan was not made (a cancelled read), 2 a tail under the minimum
             auto tail_refill_plan = [&]() {
                 if (!prompt_tail_env || tail_planned) return;
                 tail_planned = true;
@@ -14940,6 +14988,10 @@ int main(int argc, char** argv) {
                     if (p.sp == nullptr || p.lent.empty()) continue;
                     const std::vector<float>& tc = p.sp->tail_counts();
                     if (tc.empty() || p.sp->tail_tokens() <= 0) continue;
+                    if (tail_guard_env() && p.sp->tail_tokens() < tail_min_tokens_env()) {   // too few tokens to choose slots by
+                        tail_guard_why = 2;
+                        continue;
+                    }
                     std::vector<std::pair<float, int64_t>> cand;   // (-count, index): the tail-hot ones not in VRAM
                     for (int64_t l = p.lb; l < p.le; ++l)
                         for (int64_t ex = 0; ex < g.n_expert; ++ex) {
@@ -16120,7 +16172,10 @@ int main(int argc, char** argv) {
                 std::fprintf(stderr, "strata serve: prefill swap: did not run (batch_on %d, stages %zu, multi_gpu %d, peer %d, remote %d, async %d, usage %zu, adapt_swaps %d, adapt_every %d, all_resident %d, tail tokens %lld, tail counts %zu)\n",
                              (int) (o.batch > 0 && batch_on()), stages.size(), (int) multi_gpu, (int) peer.valid(), (int) (remote_opt != nullptr), (int) o.adapt_async,
                              drive.d.usage.size(), o.adapt_swaps, o.adapt_every, (int) all_experts_resident, (long long) sp.tail_tokens(), sp.tail_counts().size());
-            tail_refill_plan();   // (the last read's tail when it was not planned at the windows above)
+            // STRATA_TAIL_GUARD=1 (opt-in): a cancelled read's tail counts stop at the layer it had reached - no plan from them, the
+            // lent slots go back to the experts they held (refill, as when STRATA_PROMPT_TAIL is off)
+            if (tail_guard_env() && cancelled && !tail_planned) tail_guard_why = 1;
+            else tail_refill_plan();   // (the last read's tail when it was not planned at the windows above)
             if (!refill(err)) {
                 std::printf("ERR refilling a lent slot failed: %s\n", err.c_str());
                 return 1;
@@ -16135,6 +16190,7 @@ int main(int argc, char** argv) {
                     tail_toks = std::max(tail_toks, p.sp->tail_tokens());
                     const double decay = 1.0 - (double) o.adapt_decay;
                     if (cancelled || prefill_swap_seeded || decay <= 1e-3 || drive.d.usage.size() != (size_t) (g.n_layers * g.n_expert)) continue;
+                    if (tail_guard_env() && p.sp->tail_tokens() < tail_min_tokens_env()) continue;   // STRATA_TAIL_GUARD: nor the usage from so short a tail
                     const std::vector<float>& tc = p.sp->tail_counts();
                     const double s = 3.3 / (double) p.sp->tail_tokens() / decay;
                     for (int64_t l = p.lb; l < p.le; ++l)
@@ -16156,9 +16212,11 @@ int main(int argc, char** argv) {
                 }
                 if (tail_toks > 0)
                     std::fprintf(stderr, "strata serve: prompt tail: %lld tokens, %lld experts not in VRAM among its hottest; the refill "
-                                         "took %lld of them (the rest of the loan back as before)%s\n",
+                                         "took %lld of them (the rest of the loan back as before)%s%s\n",
                                  (long long) tail_toks, (long long) tail_cand_n, (long long) tail_in_vram,
-                                 seed_parts > 0 ? ", usage seeded" : "");
+                                 seed_parts > 0 ? ", usage seeded" : "",
+                                 tail_guard_why == 1 ? " [STRATA_TAIL_GUARD: no plan from a cancelled read]"
+                                 : tail_guard_why == 2 ? " [STRATA_TAIL_GUARD: no plan from a tail under STRATA_TAIL_MIN_TOKENS]" : "");
                 else
                     std::fprintf(stderr, "strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)\n");
             }
@@ -17160,6 +17218,10 @@ int main(int argc, char** argv) {
                 // STRATA_LOOKAHEAD_PROMOTE: the predictions the io workers copied into free RAM places are published here (an offset
                 // write, no copy), and the layers that wanted a place get one back - between windows, with the same guards as the
                 // RAM_ADAPT swaps below (no adaptive round in flight, nothing pending, no pool job reading the copy)
+                if (ram_stats_env() && ajob) {   // STRATA_RAM_STATS: could the RAM copy's upkeep run before this window?
+                    if (astate == AState::Idle) ++rs_idle;
+                    else ++rs_busy;
+                }
                 if (src.promotions_pending() && pending.empty() && (!ajob || astate == AState::Idle) && !multi_gpu && !peer.valid() &&
                     !remote_opt && (o.batch == 0 || !batch_on())) {   // (batch_on: only while slots decode; a batch-capable engine's solo decode keeps this)
                     std::vector<char> gpu_busy(host_res.size());
@@ -18066,6 +18128,17 @@ int main(int argc, char** argv) {
             if (src.ram_adapts() > 0)   // STRATA_RAM_ADAPT, cumulative
                 std::fprintf(stderr, "strata serve: resident RAM: %lld experts moved in from the file in place of "
                                      "unused ones (STRATA_RAM_ADAPT)\n", (long long) src.ram_adapts());
+            if (ram_stats_env() && src.complement_ready()) {   // STRATA_RAM_STATS=1 (diagnostic), cumulative but for the places
+                int64_t held = 0, free_places = 0;
+                src.ram_places(held, free_places);
+                std::fprintf(stderr, "strata serve: RAM stats: %lld experts held in RAM, %lld places free; before a window the "
+                                     "adaptive tier was idle %lld times and busy %lld, %lld gaps left between rounds "
+                                     "(STRATA_RAM_UPKEEP_GAP); its evicted experts: %lld to RAM (exchanged), %lld to the file "
+                                     "tier, %lld kept a RAM copy; the refills freed %lld RAM places\n",
+                             (long long) held, (long long) free_places, (long long) rs_idle, (long long) rs_busy,
+                             (long long) rs_gap, (long long) rs_out_ram, (long long) rs_out_file, (long long) rs_out_kept,
+                             (long long) rs_refill_freed);
+            }
             if (ajob)   // --adapt-async, cumulative (a round may still be in flight: it lands before the next request)
                 std::fprintf(stderr, "strata serve: asynchronous adaptive tier: %lld rounds, %lld experts swapped in, "
                                      "%.1f ms per round (start to flip, between windows)",

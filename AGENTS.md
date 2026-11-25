@@ -14,7 +14,9 @@ offers the same steps as tools.
 
 **This fork's speed fixes** (decode speed in long agent sessions, two Windows fixes) are not in the ready-made engine
 and are off by default. To install them, also follow **[docs/SPEED_FIXES_SETUP.md](docs/SPEED_FIXES_SETUP.md)**: run
-setup with `--build`, add the listed variables to the config's `"env"`, and check the engine log as it says. They
+setup with `--build`, add the listed variables to the config's `"env"`, and check the engine log as it says. On a PC
+with no Strata yet, start at its section 0: ask the user for the drive and folder, clone **this fork** there (not the
+upstream address AI_SETUP.md prints), and pick the model from its table by VRAM and RAM. They
 were measured on one PC (RTX 4080 SUPER 16 GB, 64 GB RAM, Windows 10); say so to the user.
 
 ## Working on the code

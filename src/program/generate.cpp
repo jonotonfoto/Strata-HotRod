@@ -2682,6 +2682,28 @@ static int64_t tail_min_tokens_env() {
     static const int64_t n = [] { const char* v = std::getenv("STRATA_TAIL_MIN_TOKENS"); return v != nullptr ? (int64_t) std::max(0, std::atoi(v)) : (int64_t) 256; }();
     return n;
 }
+// STRATA_RAM_ADAPT_FILL=1 (opt-in, with STRATA_RAM_ADAPT): the RAM copy's upkeep first puts a routed expert into a FREE place
+// of its layer, and only then swaps one in for an unused one.  The refill after a prompt read frees the RAM place of every
+// expert it moves into VRAM, and without the look-ahead promotion's io workers (Linux only) nothing takes those places:
+// measured on Windows, 20 free places after the start, 644 of 12,956 after 12 requests of an agent session.
+static bool ram_adapt_fill_env() {
+    static const bool on = [] { const char* v = std::getenv("STRATA_RAM_ADAPT_FILL"); return v != nullptr && std::atoi(v) != 0; }();
+    return on;
+}
+// STRATA_RAM_ADAPT_KEEP=1 (opt-in, with STRATA_RAM_ADAPT): when a request does not continue the live conversation, the experts
+// that conversation was routing to (usage >= 0.5 at that moment) are not given up by the RAM copy's upkeep for the next
+// STRATA_RAM_ADAPT_KEEP_WINDOWS decode windows (default 16384).  Measured without it: a 13,003-token summary request moved
+// 2,761 experts into RAM in place of the agent conversation's, whose next answers ran at 18-30 tok/s (48-51 before).
+// The mark is renewed only by a conversation at least as long as the one that set it, so a short helper request
+// between two turns does not protect its own experts instead.
+static bool ram_adapt_keep_env() {
+    static const bool on = [] { const char* v = std::getenv("STRATA_RAM_ADAPT_KEEP"); return v != nullptr && std::atoi(v) != 0; }();
+    return on;
+}
+static int64_t ram_adapt_keep_windows_env() {
+    static const int64_t n = [] { const char* v = std::getenv("STRATA_RAM_ADAPT_KEEP_WINDOWS"); return v != nullptr ? (int64_t) std::max(0, std::atoi(v)) : (int64_t) 16384; }();
+    return n;
+}
 
 // SPEC-recheck-cheap change 2 (STRATA_RECHECK_PREFETCH): a cut row's replaced picks are queued for a read ahead of the exact successor on the
 // expert source's read-ahead (ExpertSource::warm, the look-ahead tail read's path: RAM staging, then the card by the cache fill).  Per request
@@ -11585,6 +11607,10 @@ int main(int argc, char** argv) {
         // STRATA_RAM_STATS (counted only when it is on): windows that found the tier idle / busy at the RAM upkeep's check, the
         // ticks STRATA_RAM_UPKEEP_GAP left between rounds, where the tier's evicted experts went, RAM places the refills freed
         int64_t rs_idle = 0, rs_busy = 0, rs_gap = 0, rs_out_ram = 0, rs_out_file = 0, rs_out_kept = 0, rs_refill_freed = 0;
+        // STRATA_RAM_ADAPT_KEEP: per expert, the decode window (rk_win) until which the RAM copy's upkeep does not give it up;
+        // the length of the conversation that set the marks; how many were marked last and how many victims were passed over
+        std::vector<int64_t> ram_keep_until;
+        int64_t rk_win = 0, rk_owner_tokens = 0, rk_expire = 0, rk_marked = 0, rk_passed = 0;
         double a_ms = 0;                  // wall time from a round's start to its flip, summed (the "ms/round" stat)
         Clock::time_point a_t0;
         std::atomic<bool> a_err{false};
@@ -14391,6 +14417,23 @@ int main(int argc, char** argv) {
                        !park_current(incoming ? incoming->bytes() : 0)) {
                 std::printf("ERR %s\n", err.c_str());
                 return 1;
+            }
+            // STRATA_RAM_ADAPT_KEEP=1 (opt-in): this request does not continue the live conversation.  The usage table still
+            // describes that conversation: what it was routing to is marked, and the RAM copy's upkeep does not give those
+            // experts up while the mark lasts.  Only a conversation at least as long as the one that set the marks renews
+            // them (a helper request between two turns must not), or any conversation once they have run out.
+            if (ram_adapt_keep_env() && !from_live && !live.empty() && drive.d.usage.size() == host_res.size() &&
+                !host_res.empty() && ((int64_t) live.size() >= rk_owner_tokens || rk_win >= rk_expire)) {
+                if (ram_keep_until.size() != host_res.size()) ram_keep_until.assign(host_res.size(), 0);
+                const int64_t until = rk_win + ram_adapt_keep_windows_env();
+                rk_marked = 0;
+                for (size_t j = 0; j < host_res.size(); ++j)
+                    if (drive.d.usage[j] >= 0.5f) {
+                        ram_keep_until[j] = until;
+                        ++rk_marked;
+                    }
+                rk_owner_tokens = (int64_t) live.size();
+                rk_expire = until;
             }
             if (slot_source >= 0) {
                 lent_slot = -1;   // (a longer start than the main session's)
@@ -17222,6 +17265,7 @@ int main(int argc, char** argv) {
                     if (astate == AState::Idle) ++rs_idle;
                     else ++rs_busy;
                 }
+                if (ram_adapt_keep_env()) ++rk_win;   // STRATA_RAM_ADAPT_KEEP: its clock, one tick per decode window
                 if (src.promotions_pending() && pending.empty() && (!ajob || astate == AState::Idle) && !multi_gpu && !peer.valid() &&
                     !remote_opt && (o.batch == 0 || !batch_on())) {   // (batch_on: only while slots decode; a batch-capable engine's solo decode keeps this)
                     std::vector<char> gpu_busy(host_res.size());
@@ -17243,6 +17287,28 @@ int main(int argc, char** argv) {
                     (!ajob || astate == AState::Idle) && src.complement_ready() && !multi_gpu && !peer.valid() &&
                     !remote_opt && (o.batch == 0 || !batch_on())) {   // (the same: only while slots decode)
                     constexpr float kRamAdaptRouted = 2.0f, kRamAdaptUnused = 0.5f;
+                    int ram_left = ram_adapt_n;   // experts this pass may still move (the fills below count too)
+                    if (ram_adapt_fill_env()) {
+                        // STRATA_RAM_ADAPT_FILL=1 (opt-in): a layer with a free place takes its most routed expert that is
+                        // neither in VRAM nor in RAM, with no victim; the most routed first, one per layer
+                        struct RamFill { float u; int32_t layer, in; };
+                        std::vector<RamFill> fills;
+                        for (int64_t l = 0; l < g.n_layers; ++l) {
+                            if (src.free_places_in(l) <= 0) continue;
+                            const float* u = drive.d.usage.data() + l * g.n_expert;
+                            const int32_t* r = host_res.data() + l * g.n_expert;
+                            int32_t in = -1;
+                            for (int32_t e = 0; e < (int32_t) g.n_expert; ++e)
+                                if (r[e] < 0 && u[e] >= kRamAdaptRouted && (in < 0 || u[e] > u[in]) && !src.has_resident(l, e)) in = e;
+                            if (in >= 0) fills.push_back({u[in], (int32_t) l, in});
+                        }
+                        std::sort(fills.begin(), fills.end(), [](const RamFill& a, const RamFill& b) { return a.u > b.u; });
+                        for (const RamFill& x : fills) {
+                            if (ram_left <= 0) break;
+                            if (src.fill_free_place(x.layer, x.in)) --ram_left;
+                        }
+                    }
+                    const bool keep_on = ram_adapt_keep_env() && rk_win < rk_expire && ram_keep_until.size() == host_res.size();
                     struct RamSwap { float gain; int32_t layer, in, out; };
                     std::vector<RamSwap> swaps;
                     for (int64_t l = 0; l < g.n_layers; ++l) {
@@ -17251,7 +17317,14 @@ int main(int argc, char** argv) {
                         int32_t in = -1, out = -1;
                         for (int32_t e = 0; e < (int32_t) g.n_expert; ++e) {
                             if (r[e] >= 0) continue;   // in VRAM: the RAM copy does not hold it
-                            if (src.has_resident(l, e)) { if (out < 0 || u[e] < u[out]) out = e; }
+                            if (src.has_resident(l, e)) {
+                                // STRATA_RAM_ADAPT_KEEP: an expert of the conversation that was left is not the victim
+                                if (keep_on && ram_keep_until[(size_t) (l * g.n_expert + e)] > rk_win) {
+                                    if (u[e] < kRamAdaptUnused) ++rk_passed;
+                                    continue;
+                                }
+                                if (out < 0 || u[e] < u[out]) out = e;
+                            }
                             else if (u[e] >= kRamAdaptRouted && (in < 0 || u[e] > u[in])) in = e;
                         }
                         if (in >= 0 && out >= 0 && u[out] < kRamAdaptUnused)
@@ -17259,7 +17332,7 @@ int main(int argc, char** argv) {
                     }
                     std::sort(swaps.begin(), swaps.end(),
                               [](const RamSwap& a, const RamSwap& b) { return a.gain > b.gain; });
-                    if ((int) swaps.size() > ram_adapt_n) swaps.resize((size_t) ram_adapt_n);
+                    if ((int) swaps.size() > ram_left) swaps.resize((size_t) std::max(0, ram_left));
                     for (const RamSwap& x : swaps) src.replace_resident(x.layer, x.in, x.out);
                 }
                 if (!adapt_tick(false)) {   // --adapt-async: the round in flight moves on a step when it can
@@ -18134,10 +18207,13 @@ int main(int argc, char** argv) {
                 std::fprintf(stderr, "strata serve: RAM stats: %lld experts held in RAM, %lld places free; before a window the "
                                      "adaptive tier was idle %lld times and busy %lld, %lld gaps left between rounds "
                                      "(STRATA_RAM_UPKEEP_GAP); its evicted experts: %lld to RAM (exchanged), %lld to the file "
-                                     "tier, %lld kept a RAM copy; the refills freed %lld RAM places\n",
+                                     "tier, %lld kept a RAM copy; the refills freed %lld RAM places, %lld were filled again "
+                                     "(STRATA_RAM_ADAPT_FILL); kept for a conversation that was left: %lld experts marked, "
+                                     "%lld unused ones passed over as victims (STRATA_RAM_ADAPT_KEEP)\n",
                              (long long) held, (long long) free_places, (long long) rs_idle, (long long) rs_busy,
                              (long long) rs_gap, (long long) rs_out_ram, (long long) rs_out_file, (long long) rs_out_kept,
-                             (long long) rs_refill_freed);
+                             (long long) rs_refill_freed, (long long) src.ram_fills(),
+                             (long long) (rk_win < rk_expire ? rk_marked : 0), (long long) rk_passed);
             }
             if (ajob)   // --adapt-async, cumulative (a round may still be in flight: it lands before the next request)
                 std::fprintf(stderr, "strata serve: asynchronous adaptive tier: %lld rounds, %lld experts swapped in, "

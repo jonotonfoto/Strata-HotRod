@@ -55,6 +55,22 @@ us on a clean PC:
 Everything else - the source, `.venv`, the compiled engine, the model files, the configs and logs - stays in the two
 folders on the drive the user picked.
 
+### Model files that are already on the PC
+
+Ask the user before step 5 whether the model was downloaded before, and where. Read from `setup.py` and upstream's
+docs; an install with such paths was not run by us.
+
+| What the user has | Add to the setup line of step 5 | What happens |
+| --- | --- | --- |
+| Only the GGUF files, in a folder of their own | `--gguf-dir E:\models\UD-Q4_K_XL` (keep `--data-dir`) | setup uses the files where they are, without copying, and never deletes them. The folder must hold every shard under its original name (`<name>-00001-of-0000N.gguf` ...). Setup checks their SHA-256: only the very files it would download itself pass, another build of the same model does not. The files setup prepares from them are still made anew and go to `--data-dir`, so that drive needs room (how much per model was not checked here). One model per run: for a second model in another folder, run setup again with `--setup` and its own `--gguf-dir` |
+| A whole `Strata-data` folder from an earlier Strata install | `--data-dir E:\old\Strata-data` (instead of the new one) | the GGUF files and the prepared files are found there; nothing is downloaded or prepared again |
+| GGUF files wanted on one drive, everything else on another | `--models-dir E:\gguf --data-dir D:\AI\Strata-data` | `--models-dir` is the place for the GGUF files only, `--data-dir` for the rest (prepared files, the MTP layer) |
+
+Setup remembers the data folder it used last in `%APPDATA%\Strata\settings.json` (Linux:
+`~/.config/strata/settings.json`, the `data_dir` entry) and uses it again for every Strata folder on the PC. On a PC
+that had Strata before, a new install without `--data-dir` therefore goes to the old folder without saying so: always
+pass `--data-dir` explicitly.
+
 ### Recommended settings by VRAM and RAM
 
 Only the last row was measured with these fixes. The model column of the other rows is upstream's recommendation by

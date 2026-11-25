@@ -113,5 +113,9 @@ fixes are for.
 
 ## Note on `main`
 
-Until this note is replaced by a dated line saying the merge was built and checked, treat `main` of this fork as
-unchecked and use `speed-decline-fixes`.
+2026-11-25: the merge of `speed-decline-fixes` with the upstream `main` was built from scratch (CUDA, Windows 10, RTX
+4080 SUPER) and given one short check with the block of section 3: the engine loads the model, the `RAM stats` line
+appears, 34 freed RAM places of 34 were filled again, and after another conversation's read was cancelled 10 s in the
+first conversation ran at 70.6 and 78.3 tok/s (`tools/speed_decline/results/28-merged-main-guard-test.txt`). That is
+all that was checked on `main`: the agent-shaped loads and every other number in this file were measured on
+`speed-decline-fixes` before the merge, and the HIP and SYCL backends and Linux were not built.

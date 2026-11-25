@@ -1,0 +1,109 @@
+== 03:51:34 m-longsumkeep: config cfg-m-longsumkeep.json extra: STRATA_DECODE_TIMING=1 STRATA_VERIFY_PROFILE=1
+server stopped, engine exited after 0 s
+learned state restored to the snapshot
+loaded=1 after 35 s
+03:54:18 A step  0: prompt  69096 (cached 0), gen  600, 124.1 s
+03:54:47 A step  1: prompt  71443 (cached 69091), gen 1200, 28.9 s
+03:55:06 A step  2: prompt  73517 (cached 71438), gen  500, 18.8 s
+03:55:37 A step  3: prompt  76606 (cached 73512), gen 1200, 30.8 s
+03:56:00 A step  4: prompt  82103 (cached 76601), gen  600, 23.7 s
+03:56:28 A step  5: prompt  85155 (cached 82098), gen 1200, 27.7 s
+03:56:45 A step  6: prompt  87118 (cached 85150), gen  500, 16.9 s
+03:57:17 A step  7: prompt  91815 (cached 87113), gen 1200, 31.9 s
+03:57:36 A step  8: prompt  93485 (cached 91810), gen  600, 18.8 s
+03:58:09 A step  9: prompt  98294 (cached 93480), gen 1200, 33.7 s
+03:58:26 A step 10: prompt  99873 (cached 98289), gen  500, 16.5 s
+03:58:55 A step 11: prompt 101668 (cached 99868), gen 1200, 29.8 s
+03:59:20 A step 12: prompt 104139 (cached 101663), gen  448, 19.6 s
+03:59:52 A step 13: prompt 106017 (cached 104134), gen 1200, 31.5 s
+04:00:06 A step 14: prompt 108135 (cached 106012), gen  249, 14.6 s
+04:00:28 A step 15: prompt 109847 (cached 108130), gen  693, 21.3 s
+04:03:24 compression 1 summary: prompt 31696, gen 7746, 176.2 s
+04:04:28 B1 step 16: prompt  38813 (cached 6992), gen  600, 64.6 s
+04:04:40 B1 step 17: prompt  41376 (cached 38808), gen   72, 11.7 s
+04:04:59 B1 step 18: prompt  43295 (cached 41371), gen  500, 18.7 s
+04:05:29 B1 step 19: prompt  45254 (cached 43290), gen 1200, 30.2 s
+04:05:41 B1 step 20: prompt  46992 (cached 45249), gen  110, 12.0 s
+04:06:07 B1 step 21: prompt  49346 (cached 46987), gen 1033, 26.2 s
+done: 24 records in sim-longsumkeep.json
+step ph  max  ctx     read  rd_s | gen   tok/s | hit%% | RAM/t FILE/t  MB/t | ms/win wait  host(jobs cpu) tok/win
+  0  A   600  69096  69096 112.7 |  600   53.8 | 82.8 | 183.2   6.4  260.5 |  39.1  18.1  15.1 ( 1.7 12.6) 2.11
+  1  A  1200  71443   2352   9.7 | 1200   62.5 | 85.0 |  78.0   1.6   13.8 |  41.4  18.7  16.5 ( 3.3 12.2) 2.59
+  2  A   500  73517   2079  10.1 |  500   58.0 | 85.8 |  86.1   2.5   36.0 |  45.1  21.4  16.6 ( 3.8 11.8) 2.62
+  3  A  1200  76606   3094  11.5 | 1182   62.5 | 82.4 |  85.9   1.5   18.6 |  42.0  18.7  17.4 ( 3.1 13.3) 2.62
+  4  A   600  82103   5502  13.5 |  600   59.0 | 83.1 | 100.6   2.3   36.7 |  37.1  17.7  14.3 ( 1.6 11.8) 2.19
+  5  A  1200  85155   3057  10.0 | 1182   67.7 | 85.2 |  73.5   1.1   12.0 |  36.9  18.1  13.4 ( 1.5 11.0) 2.50
+  6  A   500  87118   1968   8.9 |  500   63.6 | 83.0 |  99.2   1.9   22.9 |  43.5  19.2  18.2 ( 2.8 14.4) 2.76
+  7  A  1200  91815   4702  11.9 | 1182   60.1 | 83.9 |  85.7   1.4   13.2 |  37.4  17.9  14.0 ( 1.8 11.3) 2.24
+  8  A   600  93485   1675   8.5 |  600   58.7 | 87.9 |  79.1   1.4   14.8 |  33.5  18.3  10.2 ( 1.1  8.4) 1.97
+  9  A  1200  98294   4814  12.7 | 1182   57.2 | 84.0 |  86.4   1.4   16.6 |  35.0  17.5  12.5 ( 1.5 10.2) 2.00
+ 10  A   500  99873   1584   8.5 |  500   63.1 | 84.9 |  90.3   1.6   17.7 |  37.7  18.9  13.5 ( 1.3 11.3) 2.38
+ 11  A  1200 101668   1800   8.4 | 1182   56.2 | 84.7 |  83.7   1.2    9.1 |  38.4  18.8  14.1 ( 2.0 11.2) 2.16
+ 12  A   600 104139   2476   9.3 |  448   43.7 | 84.3 |  83.3  10.4   42.9 |  66.1  20.9  37.6 (22.6 13.9) 2.89
+ 13  A  1200 106017   1883   8.4 | 1182   52.0 | 82.4 |  89.0   2.0   11.6 |  41.0  19.8  15.1 ( 2.6 11.6) 2.13
+ 14  A   500 108135   2123   9.7 |  249   51.2 | 85.7 | 120.2   3.6   48.6 |  42.3  21.1  14.9 ( 2.8 11.2) 2.17
+ 15  A  1200 109847   1717   9.1 |  693   57.3 | 84.1 |  87.2   1.9   17.8 |  38.8  18.4  15.1 ( 3.1 11.2) 2.22
+ 16  B1   600  38813  31821  54.3 |  600   58.6 | 84.1 | 123.4   4.3  126.0 |  38.0  17.7  14.8 ( 1.9 12.0) 2.22
+ 17  B1  1200  41376   2568   9.9 |   72   41.4 | 81.7 | 245.8  11.2  241.1 |  38.7  20.8  11.5 ( 1.3  9.5) 1.60
+ 18  B1   500  43295   1924   9.1 |  500   52.2 | 83.9 | 100.6   2.1   30.7 |  36.3  18.0  13.1 ( 2.0 10.3) 1.89
+ 19  B1  1200  45254   1964   9.7 | 1182   58.4 | 85.7 |  79.4   1.1   15.3 |  34.2  17.4  11.7 ( 1.4  9.5) 2.00
+ 20  B1   600  46992   1743   9.3 |  110   40.4 | 82.1 | 176.2  11.3  148.2 |  66.4  23.7  34.4 (18.3 15.0) 2.68
+ 21  B1  1200  49346   2359  10.3 | 1033   65.2 | 86.7 |  75.4   1.1   17.9 |  36.7  18.2  13.1 ( 1.6 10.6) 2.39
+
+part                               | n | tok/s short  long   all | hit%  | FILE/t | ms/win  wait  host  jobs
+A1: tool loop, first half          |  8 |  58.2       63.1  61.4 |  84.0 |    2.0 |  39.7   18.5  15.5   2.4
+A2: tool loop, second half         |  8 |  54.0       55.4  55.0 |  84.4 |    2.3 |  39.3   18.8  14.9   3.2
+B1: after compression 1, first 3   |  3 |  55.5       41.4  54.3 |  83.9 |    3.8 |  37.2   18.1  13.7   1.9
+B1: after compression 1, later     |  3 |  40.4       61.4  59.9 |  86.0 |    1.6 |  36.5   18.0  13.2   2.1
+other request: {'phase': 'A-aux', 'prompt': 273, 'gen': 4, 's': 5.1}
+other request: {'phase': 'C-summary', 'prompt': 31696, 'gen': 7746, 's': 176.2}
+-- engine run starts at log line 35239: engine-test2\strata.exe
+line   ctx   reuse  read  rd_s |  gen  tps  acc% | hit%  look/t | RAMb/t  FILEb/t  MB/t | skip/t | kvRAM MiB/t kvhit | rounds sw/round ms | refill vramfree
+=== engine start 2026-11-25 03:51:40
+35346  69096      0 69096 112.7 |  600  53.8   64 | 82.8   608.4 |  183.2     6.4  260.5 |   14.0 |   0.00     - |   70  2040  119.2 |  2222     -
+35510  71443  69091  2352   9.7 | 1200  62.5   72 | 85.0   581.0 |   78.0     1.6   13.8 |   12.2 |   0.49 97.00 |  185  4625  122.7 |   712   860
+35538  73517  71438  2079  10.1 |  500  58.0   70 | 85.8   596.8 |   86.1     2.5   36.0 |   11.7 |   0.86 98.20 |  233  6006  124.5 |   680     -
+35560  76606  73512  3094  11.5 |  688  58.9   78 | 82.4   544.6 |   96.3     2.1   30.9 |   14.8 |   0.43 98.19 |  300  7860  126.2 |   810     -
+35578  77312  77293    19   0.2 |  494  68.2   71 | 85.4   593.5 |   71.6     0.6    1.4 |   12.8 |   0.94 98.08 |  344  9098  126.3 |     -     -
+35599  82103  76601  5502  13.5 |  600  59.0   71 | 83.1   571.0 |  100.6     2.3   36.7 |   13.0 |   0.38 98.15 |  409 10860  125.0 |  1105     -
+35621  85155  82098  3057  10.0 |  691  67.6   83 | 85.2   527.8 |   79.0     1.5   19.7 |   11.2 |   0.64 98.07 |  478 12249  122.8 |   778     -
+35642  85864  85845    19   0.2 |  491  68.0   70 | 86.6   592.4 |   65.7     0.5    1.2 |   11.1 |   0.65 98.11 |  527 13117  122.0 |     -     -
+35664  87118  85150  1968   8.9 |  500  63.6   75 | 83.0   567.3 |   99.2     1.9   22.9 |   13.6 |   0.49 98.14 |  572 14429  122.6 |   647     -
+35686  91815  87113  4702  11.9 |  688  60.5   73 | 83.9   569.8 |   94.2     2.1   22.1 |   12.2 |   0.39 98.15 |  642 16002  122.5 |  1007     -
+35703  92521  92502    19   0.2 |  494  59.4   56 | 86.5   658.2 |   73.8     0.4    0.9 |   12.5 |   0.74 98.16 |  703 17189  120.7 |     -     -
+35724  93485  91810  1675   8.5 |  600  58.7   60 | 87.9   627.6 |   79.1     1.4   14.8 |   10.1 |   0.33 98.22 |  779 18418  118.9 |   614     -
+35746  98294  93480  4814  12.7 |  689  54.7   65 | 84.0   589.5 |   97.7     2.1   27.8 |   12.6 |   0.38 98.26 |  867 20410  117.8 |  1007     -
+35764  99001  98982    19   0.2 |  493  61.0   59 | 86.9   639.9 |   70.4     0.4    1.0 |   10.8 |   1.03 98.21 |  925 21544  117.0 |     -     -
+35785  99873  98289  1584   8.5 |  500  63.1   76 | 84.9   553.8 |   90.3     1.6   17.7 |   11.9 |   0.38 98.25 |  977 22626  116.9 |   614     -
+35810 101668  99868  1800   8.4 |  688  52.9   65 | 84.7   601.2 |   91.1     1.6   14.6 |   12.0 |   0.19 98.29 | 1061 24322  117.0 |   647     -
+35828 102374 102355    19   0.2 |  494  61.6   66 | 84.9   609.1 |   73.4     0.6    1.4 |   11.8 |   0.52 98.33 | 1114 25493  116.8 |     -     -
+35851    273      0   273   4.9 |    4  23.1   50 | 71.1   689.0 | 1576.8   104.5  896.9 |   31.5 |  95.75 98.30 | 1115 25493  116.8 |   451     -
+35872 104139 101663  2476   9.3 |  448  43.7   75 | 84.3   567.8 |   83.3    10.4   42.9 |   14.9 | -12.42 89.83 | 1153 27081  119.6 |   712     -
+35893 106017 104134  1883   8.4 |  688  48.9   69 | 82.4   579.2 |   99.5     2.9   18.7 |   13.9 |   0.69 96.51 | 1234 29451  120.2 |   647     -
+35911 106723 106704    19   0.2 |  494  57.1   57 | 86.3   663.5 |   74.3     0.8    1.8 |   11.2 |   0.82 97.48 | 1290 30881  119.9 |     -     -
+35933 108135 106012  2123   9.7 |  249  51.2   59 | 85.7   645.0 |  120.2     3.6   48.6 |   13.5 |   0.95 97.88 | 1319 31807  120.2 |   680     -
+35954 109847 108130  1717   9.1 |  693  57.3   75 | 84.1   553.7 |   87.2     1.9   17.8 |   12.9 |   0.18 97.97 | 1395 33950  120.2 |   614     -
+35984  31696      0 31696  55.6 | 7746  64.3   76 | 84.1   567.7 |   75.4     1.9   13.4 |   12.0 |   0.05 98.02 | 2039 49627  126.0 |  2222     -
+36015  38813   6992 31821  54.3 |  600  58.6   67 | 84.1   595.5 |  123.4     4.3  126.0 |   13.4 |  -1.35 99.65 | 2106 51306  125.7 |  2222   724
+36036  41376  38808  2568   9.9 |   72  41.4   64 | 81.7   562.2 |  245.8    11.2  241.1 |   17.1 |  -7.12 98.47 | 2117 51616  125.7 |   745     -
+36057  43295  41371  1924   9.1 |  500  52.2   63 | 83.9   597.1 |  100.6     2.1   30.7 |   12.9 |   0.10 98.40 | 2182 53044  125.2 |   647     -
+36080  45254  43290  1964   9.7 |  690  56.1   64 | 85.7   593.3 |   87.5     1.4   25.3 |   12.7 |   0.16 98.79 | 2272 54638  124.2 |   647     -
+36098  45962  45943    19   0.2 |  492  62.0   57 | 87.6   663.3 |   68.1     0.6    1.4 |   12.1 |   0.23 99.05 | 2328 55669  123.8 |     -     -
+36124  46992  45249  1743   9.3 |  110  40.4   68 | 82.1   596.6 |  176.2    11.3  148.2 |   21.1 |   0.69 99.17 | 2338 56072  124.1 |   614     -
+36146  49346  46987  2359  10.3 | 1033  65.2   68 | 86.7   601.9 |   75.4     1.1   17.9 |   11.6 |   0.04 99.16 | 2447 58024  123.4 |   712     -
+strata serve: resident RAM: 2665 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12941 experts held in RAM, 15 places free; before a window the adaptive tier was idle 2180 times and busy 6635, 2162 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 52510 to RAM (exchanged), 534 to the file tier, 0 kept a RAM copy; the refills freed 217 RAM places, 202 were filled 
+strata serve: prompt tail: 1959 tokens, 21408 experts not in VRAM among its hottest; the refill took 647 of them (the rest of the loan back as before), usage seeded
+strata serve: resident RAM: 2719 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12939 experts held in RAM, 17 places free; before a window the adaptive tier was idle 2270 times and busy 6911, 2251 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 54091 to RAM (exchanged), 547 to the file tier, 0 kept a RAM copy; the refills freed 229 RAM places, 212 were filled 
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: resident RAM: 2758 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12943 experts held in RAM, 13 places free; before a window the adaptive tier was idle 2326 times and busy 7080, 2307 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 55120 to RAM (exchanged), 549 to the file tier, 0 kept a RAM copy; the refills freed 229 RAM places, 216 were filled 
+strata serve: prompt tail: 1738 tokens, 20826 experts not in VRAM among its hottest; the refill took 614 of them (the rest of the loan back as before), usage seeded
+strata serve: resident RAM: 2786 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12944 experts held in RAM, 12 places free; before a window the adaptive tier was idle 2336 times and busy 7111, 2317 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 55515 to RAM (exchanged), 557 to the file tier, 0 kept a RAM copy; the refills freed 236 RAM places, 224 were filled 
+strata serve: prompt tail: 2354 tokens, 21328 experts not in VRAM among its hottest; the refill took 712 of them (the rest of the loan back as before), usage seeded
+strata serve: resident RAM: 2845 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+strata serve: RAM stats: 12946 experts held in RAM, 10 places free; before a window the adaptive tier was idle 2444 times and busy 7435, 2424 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 57462 to RAM (exchanged), 565 to the file tier, 0 kept a RAM copy; the refills freed 241 RAM places, 231 were filled 
+server stopped, engine exited after 6 s
+== 04:06:19 m-longsumkeep finished

@@ -9,6 +9,75 @@ UD-Q4_K_XL, `--resident-budget-gib 38`, `--adapt-async 1`. On other cards, other
 not measured. The full record (in Russian) is [SPEED_DECLINE.md](SPEED_DECLINE.md) and
 [SPEED_DECLINE_PLAN.md](SPEED_DECLINE_PLAN.md).
 
+## 0. From nothing, into a folder on a drive the user picks
+
+For a PC with no Strata on it. Steps 1-4 below are the same steps in detail; this is the order to do them in.
+
+1. **Check the PC** as [AI_SETUP.md](AI_SETUP.md) step 1 says (GPU, driver, RAM, free disk). Stop if it does not fit.
+2. **Ask the user which drive and folder.** Do not pick the system drive yourself. The drive needs about 80 GB free
+   for the smaller models (AI_SETUP.md); UD-Q4_K_XL's download alone is 111 GB ([MODELS.md](MODELS.md)) and the
+   files setup prepares from it come on top, so ask for clearly more than that. Ideally an NVMe SSD (`Get-PSDrive -PSProvider FileSystem`
+   / `df -h`). Below, `D:\AI` stands for the user's answer.
+3. **Clone this fork there** - not the upstream address that AI_SETUP.md step 2 prints:
+
+   ```
+   Windows:  git clone https://github.com/jonotonfoto/Strata-HotRod.git D:\AI\Strata-HotRod
+   Linux:    git clone https://github.com/jonotonfoto/Strata-HotRod.git /mnt/data/Strata-HotRod
+   ```
+
+   `main` has everything; `-b speed-decline-fixes` is the state the measurements were taken on (section 1).
+4. **Pick the model** from the table in "Recommended settings" below.
+5. **Run setup from that folder with `--build` and `--data-dir` on the same drive** (section 2 for the flags):
+
+   ```
+   Windows:  cd /d D:\AI\Strata-HotRod
+             START-HERE.bat --yes --family <family> --model <model> --build --data-dir D:\AI\Strata-data --no-start
+   Linux:    cd /mnt/data/Strata-HotRod
+             ./setup.sh --yes --family <family> --model <model> --build --data-dir /mnt/data/Strata-data --no-start
+   ```
+
+   Without `--data-dir` the model files go to a `Strata-data` folder next to the Strata folder, which is the same
+   drive anyway; the flag only makes it explicit.
+6. **Switch the speed fixes on** (section 3), **start and verify the server** (AI_SETUP.md steps 6-7), **check the
+   log** (section 4), then connect the user's apps (AI_SETUP.md step 8).
+
+**What still lands on the system drive - tell the user before step 5.** Read from `setup.py`, not timed or sized by
+us on a clean PC:
+
+- Python for the user account, if the PC has none.
+- The build tools that `--build` needs, if they are missing: Visual Studio 2022 Build Tools and the NVIDIA CUDA
+  Toolkit 13.0, installed with `winget` into their default places (setup says "about 8-10 GB, 15-40 minutes" and
+  Windows asks for permission); on Linux `build-essential` and the CUDA toolkit through `sudo apt`, which the user
+  has to run.
+- One small settings file: `%APPDATA%\Strata\settings.json` (Linux: `~/.config/strata/settings.json`). It remembers
+  the data folder.
+
+Everything else - the source, `.venv`, the compiled engine, the model files, the configs and logs - stays in the two
+folders on the drive the user picked.
+
+### Recommended settings by VRAM and RAM
+
+Only the last row was measured with these fixes. The model column of the other rows is upstream's recommendation by
+RAM (AI_SETUP.md step 3, [DETAILS.md](DETAILS.md)); whether the fixes change anything there is not measured. Say so to
+the user.
+
+| GPU / RAM | `--family` / `--model` | Context setup picks | The speed-fix block (section 3) |
+| --- | --- | --- | --- |
+| 12 GB / 32 GB | `--family coder` (IQ1_M) | 32,768 | not measured. Add it, then look for the `RAM stats` line (section 4): no line means the engine keeps no RAM copy of experts here and the block does nothing |
+| 16 GB / 32 GB | `--family coder` (IQ1_M) | 65,536 | the same: not measured, decide by the `RAM stats` line |
+| 12 GB / 64 GB | `--family qwen --model IQ2_XS` | 32,768 | the same: not measured, decide by the `RAM stats` line. `--family unsloth --model UD-Q4_K_XL` also installs (NVIDIA, NVMe SSD); upstream measured 7-8.5 tok/s for it on an RTX 5070 12 GB with 64 GB on an older engine, and this fork has no number for 12 GB |
+| 16 GB / 64 GB | `--family unsloth --model UD-Q4_K_XL` for the best answers, or `--family qwen --model IQ2_XS` (upstream's recommendation, smaller and not measured here) | 65,536 (the measurements here used 128,000: `--context 128000`) | **measured** with UD-Q4_K_XL on an RTX 4080 SUPER: the whole block of section 3, plus `STRATA_RAM_ADAPT_KEEP=1` if wanted. 60 tok/s held over 110 agent turns; 38 tok/s at the end without the block |
+
+For all four:
+
+- Keep the engine arguments setup wrote into `strata-<model>.json` (`--resident-budget-gib`, `--adapt-async` and the
+  rest): setup sizes them for the PC's RAM and VRAM. The measured PC ran `--resident-budget-gib 38` and
+  `--adapt-async 1`; do not copy 38 to a 32 GB PC.
+- Do not add `--adapt-every` and do not add `STRATA_LOAN_SPILL` (section 3).
+- A longer context than setup picks costs VRAM that the expert cache then does not have; on a 12 GB card raise it only
+  if the user's agent needs it, and say that the speed was not measured there.
+- Windows: a fixed page file (AI_SETUP.md step 9) if the engine reports `cudaMalloc ... out of memory` with free VRAM.
+
 ## 1. Which branch
 
 - `speed-decline-fixes` - the state every measurement here was taken on. Use this one.

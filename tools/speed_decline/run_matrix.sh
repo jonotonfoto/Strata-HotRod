@@ -4,7 +4,7 @@
 # results/<nn>-<arm>.txt.  Before every arm the Hermes log is checked: if a message came in since this script started,
 # the matrix stops (the user wants the server) and says so.
 S="$(cd "$(dirname "$0")" && pwd)"
-EXE='H:\Ai\Strata-HotRod\engine-test2\strata.exe'
+EXE="${EXE:-H:\Ai\Strata-HotRod\engine-test2\strata.exe}"   # EXE=<engine> picks another build; MFLAGS / MARGS add variables / make_cfg.py arguments to every arm
 HLOG="${HERMES_LOG:-$(cygpath -u "${LOCALAPPDATA:-.}")/hermes/logs/agent.log}"   # the agent's log (an inbound message stops the matrix)
 START="$(date '+%Y-%m-%d %H:%M:%S')"
 BASEFLAGS="STRATA_RAM_ADAPT=4 STRATA_RAM_UPKEEP_GAP=1 STRATA_RAM_STATS=1"
@@ -28,8 +28,8 @@ for arm in "$@"; do
     longctl)      n=29; flags="";                                                           env_sim="SIM_CYCLES=4" ;;
     *) echo "unknown arm $arm"; exit 2 ;;
   esac
-  cfg="$(python make_cfg.py "m-$arm" "exe=$EXE" $flags | tail -1)"
-  out="results/$n-$arm.txt"
+  cfg="$(python make_cfg.py "m-$arm" "exe=$EXE" $flags $MFLAGS $MARGS | tail -1)"
+  out="results/$n-$arm${SUFFIX:-}.txt"
   echo "== $(date +%H:%M:%S) arm $arm -> $out  flags: ${flags:-none}  ${env_sim}"
   EXTRA="STRATA_DECODE_TIMING=1 STRATA_VERIFY_PROFILE=1" bash with_server.sh "m-$arm" "$(cygpath -u "$cfg")" env $env_sim bash -c "$cmd" > "$out" 2>&1
   grep -A8 "^part " "$out" | cut -c1-130

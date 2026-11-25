@@ -1,0 +1,57 @@
+== 02:03:11 A-old: config cfg-A-old.json extra: none
+server stopped, engine exited after 6 s
+learned state restored to the snapshot
+loaded=1 after 35 s
+short           prompt     59 tokens,  181 generated,   647 chars
+document        prompt  18462 tokens,  300 generated,  1382 chars
+next turn       prompt  18483 tokens,  200 generated,   908 chars
+document again  prompt  18457 tokens,  250 generated,  1024 chars
+-- engine run starts at log line 30368: engine\strata.exe
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: prompt tail: 6681 tokens, 21498 experts not in VRAM among its hottest; the refill took 2136 of them (the rest of the loan back as before)
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: prompt tail: 6676 tokens, 21478 experts not in VRAM among its hottest; the refill took 2136 of them (the rest of the loan back as before)
+server stopped, engine exited after 6 s
+== 02:05:50 A-old finished
+== 02:05:50 A-old2: config cfg-A-old.json extra: none
+server stopped, engine exited after 0 s
+learned state restored to the snapshot
+loaded=1 after 35 s
+short           prompt     59 tokens,  181 generated,   647 chars
+document        prompt  18462 tokens,  300 generated,  1399 chars
+next turn       prompt  18483 tokens,  200 generated,   908 chars
+document again  prompt  18457 tokens,  250 generated,  1024 chars
+-- engine run starts at log line 30510: engine\strata.exe
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: prompt tail: 6681 tokens, 21498 experts not in VRAM among its hottest; the refill took 2136 of them (the rest of the loan back as before)
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: prompt tail: 6676 tokens, 21478 experts not in VRAM among its hottest; the refill took 2136 of them (the rest of the loan back as before)
+server stopped, engine exited after 7 s
+== 02:08:23 A-old2 finished
+== 02:08:23 A-new: config cfg-A-new.json extra: none
+server stopped, engine exited after 0 s
+learned state restored to the snapshot
+loaded=1 after 35 s
+short           prompt     59 tokens,  181 generated,   647 chars
+document        prompt  18462 tokens,  300 generated,  1397 chars
+next turn       prompt  18483 tokens,  200 generated,   908 chars
+document again  prompt  18457 tokens,  250 generated,  1024 chars
+-- engine run starts at log line 30654: engine-test\strata.exe
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: prompt tail: 6681 tokens, 21498 experts not in VRAM among its hottest; the refill took 2136 of them (the rest of the loan back as before)
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: prompt tail: 6676 tokens, 21478 experts not in VRAM among its hottest; the refill took 2136 of them (the rest of the loan back as before)
+server stopped, engine exited after 7 s
+== 02:10:56 A-new finished
+short           SAME  (647 and 647 chars)
+document        DIFFERENT  (1382 and 1399 chars, first difference at char 720)
+next turn       SAME  (908 and 908 chars)
+document again  SAME  (1024 and 1024 chars)
+3 of 4 answers are the same text
+short           SAME  (647 and 647 chars)
+document        DIFFERENT  (1382 and 1397 chars, first difference at char 720)
+next turn       SAME  (908 and 908 chars)
+document again  SAME  (1024 and 1024 chars)
+3 of 4 answers are the same text
+
+[exited with code 0]

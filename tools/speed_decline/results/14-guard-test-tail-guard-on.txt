@@ -1,0 +1,38 @@
+== 02:16:01 guard-on: config cfg-new-guard.json extra: none
+server stopped, engine exited after 0 s
+learned state restored to the snapshot
+loaded=1 after 35 s
+guard test on
+02:17:42 G1 short tail, cold read             59.6 s, 394 chars
+02:17:55 G2 next turn                         13.3 s, 1127 chars
+02:18:44 V1 healthy conversation, cold read   49.1 s, 0 chars
+02:18:53 V2 its next turn (before)             9.4 s, 0 chars
+02:19:04 V3 other conversation, cancelled     10.2 s  (the client left)
+02:19:19 V4 first conversation (after)        12.6 s, 0 chars
+02:19:29 V5 its next turn (after)              9.5 s, 1488 chars
+-- engine run starts at log line 31164: engine-test\strata.exe
+line   ctx   reuse  read  rd_s |  gen  tps  acc% | hit%  look/t | RAMb/t  FILEb/t  MB/t | skip/t | kvRAM MiB/t kvhit | rounds sw/round ms | refill vramfree
+=== engine start 2026-11-25 02:16:08
+31269  26339      0 26339  49.7 |  600  61.3   72 | 82.7   578.2 |  122.3     5.1  120.2 |   13.7 |   0.00     - |   76  2031  128.0 |  2222     -
+31428  26509  26334   175   4.3 |  600  67.3   75 | 83.3   568.4 |   84.6     1.7    5.9 |   12.5 |   0.41 98.67 |  149  3740  125.0 |     0   879
+31450  21676      0 21676  40.3 |  600  68.7   70 | 85.1   602.0 |  104.0     5.4   86.4 |   13.2 |   0.09 99.19 |  214  4776  128.0 |  2178     -
+31467  21702  21671    31   1.1 |  600  72.2   82 | 84.4   541.7 |   71.1     2.2    3.5 |   13.6 |  -0.09 98.72 |  270  5654  132.5 |     -     -
+31487  26322      0     0  16.6 |    0   0.0    0 |  0.0     0.0 | 5303.0  2222.0 20561.0 |    0.0 |  16.00 99.30 |  270  5654  133.0 |     0     -
+31500  21727  21697    30   0.9 |  600  72.6   80 | 84.5   550.2 |   71.6     1.7    2.9 |   13.8 |  -0.44 100.00 |  331  6590  133.1 |     -     -
+31515  21751  21722    29   0.9 |  600  70.0   73 | 84.9   578.6 |   73.1     1.4    1.6 |   12.8 |   0.39 98.71 |  407  7929  129.6 |     -     -
+strata serve: RAM stats: 12939 experts held in RAM, 17 places free; before a window the adaptive tier was idle 1 times and busy 233, 0 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 2015 to RAM (exchanged), 45 to the file tier, 0 kept a RAM copy; the refills freed 17 RAM places
+strata serve: prompt tail: 170 tokens, 0 experts not in VRAM among its hottest; the refill took 0 of them (the rest of the loan back as before) [STRATA_TAIL_GUARD: no plan from a tail under STRATA_TAIL_MIN_TOKENS]
+strata serve: RAM stats: 12939 experts held in RAM, 17 places free; before a window the adaptive tier was idle 2 times and busy 456, 0 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 3655 to RAM (exchanged), 85 to the file tier, 0 kept a RAM copy; the refills freed 17 RAM places
+strata serve: prompt tail: 9895 tokens, 22845 experts not in VRAM among its hottest; the refill took 2178 of them (the rest of the loan back as before), usage seeded
+strata serve: RAM stats: 12936 experts held in RAM, 20 places free; before a window the adaptive tier was idle 3 times and busy 650, 0 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 4655 to RAM (exchanged), 121 to the file tier, 0 kept a RAM copy; the refills freed 20 RAM places
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: RAM stats: 12936 experts held in RAM, 20 places free; before a window the adaptive tier was idle 4 times and busy 815, 0 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 5502 to RAM (exchanged), 152 to the file tier, 0 kept a RAM copy; the refills freed 20 RAM places
+strata serve: the prompt read failed with a STOP pending: cancelled
+strata serve: prompt tail: 2765 tokens, 0 experts not in VRAM among its hottest; the refill took 0 of them (the rest of the loan back as before) [STRATA_TAIL_GUARD: no plan from a cancelled read]
+strata serve: RAM stats: 12936 experts held in RAM, 20 places free; before a window the adaptive tier was idle 4 times and busy 815, 0 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 5502 to RAM (exchanged), 152 to the file tier, 0 kept a RAM copy; the refills freed 20 RAM places
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: RAM stats: 12936 experts held in RAM, 20 places free; before a window the adaptive tier was idle 5 times and busy 1000, 0 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 6402 to RAM (exchanged), 188 to the file tier, 0 kept a RAM copy; the refills freed 20 RAM places
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+strata serve: RAM stats: 12936 experts held in RAM, 20 places free; before a window the adaptive tier was idle 6 times and busy 1228, 0 gaps left between rounds (STRATA_RAM_UPKEEP_GAP); its evicted experts: 7693 to RAM (exchanged), 236 to the file tier, 0 kept a RAM copy; the refills freed 20 RAM places
+server stopped, engine exited after 7 s
+== 02:19:41 guard-on finished

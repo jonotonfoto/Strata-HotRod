@@ -1,0 +1,5 @@
+messages: 128 chars: 178286 roles: {'system': 1, 'user': 18, 'assistant': 56, 'tool': 53}
+22:09:58 before-1: first token after 142.3 s, total 204.6 s, 1671 content chars, 3281 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 1500, 'total_tokens': 79650, 'prompt_tokens_details': {'cached_tokens': 0}}
+22:11:02 before-2: first token after 1.2 s, total 64.3 s, 4030 content chars, 783 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 1500, 'total_tokens': 79650, 'prompt_tokens_details': {'cached_tokens': 78145}}
+
+[exited with code 0]

@@ -1,0 +1,66 @@
+== 00:21:38 sim adapt4only: 
+server stopped, engine exited after 0 s
+learned state restored to the snapshot
+loaded=1 after 35 s
+00:24:22 A step  0: prompt  69096 (cached 0), gen  600, 123.6 s
+00:24:52 A step  1: prompt  71443 (cached 69091), gen 1200, 29.7 s
+00:25:11 A step  2: prompt  73517 (cached 71438), gen  500, 19.3 s
+00:25:42 A step  3: prompt  76606 (cached 73512), gen 1200, 30.8 s
+00:26:06 A step  4: prompt  82103 (cached 76601), gen  600, 24.1 s
+00:26:25 A step  5: prompt  85155 (cached 82098), gen  385, 18.9 s
+00:26:44 A step  6: prompt  87118 (cached 85150), gen  500, 18.9 s
+00:27:18 A step  7: prompt  91815 (cached 87113), gen 1200, 34.3 s
+00:27:38 A step  8: prompt  93485 (cached 91810), gen  600, 19.5 s
+00:28:12 A step  9: prompt  98294 (cached 93480), gen 1200, 34.8 s
+00:28:30 A step 10: prompt  99873 (cached 98289), gen  500, 17.7 s
+00:29:01 A step 11: prompt 101668 (cached 99868), gen 1200, 31.2 s
+00:29:28 A step 12: prompt 104139 (cached 101663), gen  600, 21.7 s
+00:29:46 A step 13: prompt 106017 (cached 104134), gen  447, 18.1 s
+00:30:03 A step 14: prompt 108135 (cached 106012), gen  357, 16.8 s
+00:30:34 A step 15: prompt 109847 (cached 108130), gen 1075, 30.9 s
+00:32:06 compression summary: prompt 31683, gen 2000, 92.4 s
+00:33:11 B step 16: prompt  36948 (cached 6992), gen  600, 65.1 s
+00:33:44 B step 17: prompt  39511 (cached 36943), gen 1200, 32.4 s
+00:34:03 B step 18: prompt  41430 (cached 39506), gen  500, 19.5 s
+00:34:36 B step 19: prompt  43389 (cached 41425), gen 1200, 32.4 s
+00:34:57 B step 20: prompt  45127 (cached 43384), gen  600, 21.7 s
+00:35:11 B step 21: prompt  47481 (cached 45122), gen   63, 13.4 s
+done: 24 records in sim-adapt4only.json
+step ph  max  ctx     read  rd_s | gen   tok/s | hit%% | RAM/t FILE/t  MB/t | ms/win wait  host(jobs cpu) tok/win
+  0  A   600  69096  69096 113.4 |  600   59.9 | 83.1 | 175.9   7.4  262.8 |  43.5  18.5  19.4 ( 4.4 14.2) 2.61
+  1  A  1200  71443   2352   9.8 | 1182   60.2 | 82.6 |  88.1   3.5   15.1 |  44.6  18.3  21.0 ( 5.6 14.5) 2.68
+  2  A   500  73517   2079  10.2 |  500   55.4 | 84.6 |  97.5   4.1   37.1 |  38.2  17.6  15.8 ( 3.7 11.4) 2.12
+  3  A  1200  76606   3094  11.5 | 1182   62.3 | 83.3 |  77.0   4.7   22.8 |  49.3  18.4  25.6 (10.3 14.4) 3.07
+  4  A   600  82103   5502  13.7 |  600   58.0 | 82.6 |  99.5   4.5   38.7 |  38.2  17.4  16.1 ( 3.1 12.2) 2.21
+  5  A  1200  85155   3057  10.1 |  385   43.9 | 81.8 |  87.6  14.6   52.2 |  60.9  18.6  36.7 (22.2 13.7) 2.67
+  6  A   500  87118   1968   9.1 |  500   51.5 | 81.7 |  96.9   8.1   30.0 |  47.1  17.6  24.7 (10.2 13.7) 2.43
+  7  A  1200  91815   4702  12.0 | 1182   53.9 | 83.1 |  83.5   5.3   16.2 |  39.7  18.1  16.7 ( 4.7 11.3) 2.13
+  8  A   600  93485   1675   8.5 |  600   55.1 | 85.3 |  87.1   5.4   18.7 |  36.6  17.4  14.7 ( 3.7 10.3) 2.01
+  9  A  1200  98294   4814  12.9 | 1200   55.1 | 86.5 |  76.9   4.6   19.6 |  37.1  17.5  14.9 ( 4.5  9.8) 2.04
+ 10  A   500  99873   1584   8.7 |  500   56.0 | 85.1 |  90.6   5.9   21.7 |  38.8  17.7  16.4 ( 4.8 10.9) 2.17
+ 11  A  1200 101668   1800   8.6 | 1200   53.3 | 86.2 |  75.1   5.0   12.4 |  38.4  17.5  16.2 ( 5.4 10.1) 2.04
+ 12  A   600 104139   2476   9.4 |  600   49.7 | 84.2 |  89.6   6.7   29.2 |  41.0  17.6  18.6 ( 6.9 11.0) 2.04
+ 13  A  1200 106017   1883   8.7 |  447   47.8 | 82.5 |  99.0   9.1   37.2 |  46.8  17.6  24.3 (11.1 12.5) 2.23
+ 14  A   500 108135   2123   9.9 |  357   52.4 | 86.1 |  92.9   6.8   42.7 |  41.1  18.1  18.1 ( 7.5 10.0) 2.15
+ 15  A  1200 109847   1717   9.4 | 1057   49.8 | 86.2 |  75.5   7.1   20.6 |  44.2  17.6  21.9 (10.5 10.7) 2.20
+ 16  B   600  36948  29956  53.4 |  600   51.7 | 83.9 | 117.0   9.6  130.0 |  39.1  16.4  18.2 ( 6.6 10.9) 2.02
+ 17  B  1200  39511   2568  10.5 | 1182   54.6 | 85.6 |  77.1   6.5   21.6 |  41.2  17.0  19.4 ( 7.6 11.1) 2.25
+ 18  B   500  41430   1924   9.5 |  500   50.0 | 83.5 |  90.9   8.4   40.1 |  46.0  17.2  23.9 (10.8 12.4) 2.30
+ 19  B  1200  43389   1964  10.1 | 1200   54.0 | 85.0 |  75.7   6.4   21.4 |  42.0  16.9  20.2 ( 8.3 11.2) 2.27
+ 20  B   600  45127   1743   9.6 |  600   50.0 | 83.4 |  90.6   7.8   35.2 |  42.7  16.8  21.4 ( 9.1 11.5) 2.14
+ 21  B  1200  47481   2359  10.7 |   63   24.1 | 75.1 | 241.5  32.3  349.6 | 145.1  23.4 115.3 (90.8 23.4) 3.50
+
+part                          | n | tok/s short  long   all | hit%  | FILE/t | ms/win  wait  host  jobs
+A1: tool loop, first half     |  8 |  56.3       56.7  56.6 |  82.9 |    5.7 |  44.0   18.1  20.8   6.9
+A2: tool loop, second half    |  8 |  53.1       52.2  52.5 |  85.6 |    6.0 |  40.0   17.6  17.7   6.5
+B: after the compression      |  6 |  50.6       52.6  51.8 |  84.4 |    7.7 |  42.9   16.9  21.2   9.0
+other request: {'phase': 'A-aux', 'prompt': 273, 'gen': 4, 's': 5.0}
+other request: {'phase': 'C-summary', 'prompt': 31683, 'gen': 2000, 's': 92.4}
+strata serve: work done: swap rounds 0 (0 swaps, 0 quality), ram evictions 0, look-ahead 80199 predicted experts (0 layers skipped), promoted 0, promotion hits 0, promotion skips (no place) 0
+strata serve: work done: swap rounds 0 (0 swaps, 0 quality), ram evictions 0, look-ahead 186402 predicted experts (0 layers skipped), promoted 0, promotion hits 0, promotion skips (no place) 0
+strata serve: work done: swap rounds 0 (0 swaps, 0 quality), ram evictions 0, look-ahead 97805 predicted experts (0 layers skipped), promoted 0, promotion hits 0, promotion skips (no place) 0
+strata serve: work done: swap rounds 0 (0 swaps, 0 quality), ram evictions 0, look-ahead 14515 predicted experts (0 layers skipped), promoted 0, promotion hits 0, promotion skips (no place) 0
+server stopped, engine exited after 6 s
+== 00:35:22 sim adapt4only done
+
+[exited with code 0]

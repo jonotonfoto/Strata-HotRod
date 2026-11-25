@@ -1033,6 +1033,18 @@ public:
     /// STRATA_EXCHANGE_ROTATE (false, nothing changes).
     bool replace_resident(int64_t layer, int64_t in, int64_t out);
     int64_t ram_adapts() const { return ram_adapts_; }
+    /// STRATA_RAM_STATS=1 (a diagnostic line, off by default): the RAM copy's places counted now - `held` by an expert and
+    /// `free_places` given up by release_resident_place and not taken again.  Reads only; the caller's thread, between
+    /// requests (the free lists under tier_mu_).
+    void ram_places(int64_t& held, int64_t& free_places) const;
+    /// STRATA_RAM_ADAPT_FILL=1 (opt-in): places of `layer` that release_resident_place gave up and nothing took again.
+    int64_t free_places_in(int64_t layer) const;
+    /// STRATA_RAM_ADAPT_FILL=1 (opt-in): expert `in` of `layer`, held neither by the RAM copy nor (the caller's check) by
+    /// the GPU, is read from the file into a FREE place of its layer - no expert gives a place up.  The same conditions
+    /// as replace_resident: the caller's thread, between windows, no adaptive round in flight, no exchange staged.
+    /// False (and nothing changes) when the layer has no free place, the read fails, or a promotion of `in` is in flight.
+    bool fill_free_place(int64_t layer, int64_t in);
+    int64_t ram_fills() const { return ram_fills_; }
     bool exchange_rotation() const { return exchange_storage_.active(); }
     uint64_t rotated_exchanges() const { return exchange_storage_.exchanges(); }
     uint64_t avoided_exchange_copy_bytes() const { return exchange_storage_.avoided_bytes(); }
@@ -1290,6 +1302,7 @@ private:
     uint64_t stage_blob_ = 0;
     uint64_t stage_seq_ = 0;
     int64_t ram_adapts_ = 0;                  ///< replace_resident: experts moved from the file into the compact copy
+    int64_t ram_fills_ = 0;                   ///< fill_free_place: experts read from the file into a free place
     std::vector<uint8_t> ram_adapt_buf_;      ///< ...one blob, read here before it replaces another
     uint64_t epoch_ = 0;
     int64_t last_layer_ = -1;

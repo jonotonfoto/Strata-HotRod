@@ -12,6 +12,11 @@ start and verify the server, and connect the user's apps. Never expose the serve
 `--api-key`. As an alternative to shell commands, Strata's MCP server ([docs/MCP_SERVER.md](docs/MCP_SERVER.md))
 offers the same steps as tools.
 
+**This fork's speed fixes** (decode speed in long agent sessions, two Windows fixes) are not in the ready-made engine
+and are off by default. To install them, also follow **[docs/SPEED_FIXES_SETUP.md](docs/SPEED_FIXES_SETUP.md)**: run
+setup with `--build`, add the listed variables to the config's `"env"`, and check the engine log as it says. They
+were measured on one PC (RTX 4080 SUPER 16 GB, 64 GB RAM, Windows 10); say so to the user.
+
 ## Working on the code
 
 - How the engine works, every measured number, the API and all settings: [docs/DETAILS.md](docs/DETAILS.md) and

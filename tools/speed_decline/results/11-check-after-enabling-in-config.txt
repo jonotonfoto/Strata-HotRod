@@ -1,0 +1,12 @@
+loaded=1 after 29 s
+00:44:47 check-1: first token after 125.2 s, total 135.3 s, 1582 content chars, 524 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 600, 'total_tokens': 78750, 'prompt_tokens_details': {'cached_tokens': 0}}
+00:44:58 check-2: first token after 1.1 s, total 10.5 s, 976 content chars, 1327 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 600, 'total_tokens': 78750, 'prompt_tokens_details': {'cached_tokens': 78145}}
+      1 115 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+      1 150 experts moved in from the file in place of unused ones (STRATA_RAM_ADAPT)
+      1 a round every 4 windows
+line   ctx   reuse  read  rd_s |  gen  tps  acc% | hit%  look/t | RAMb/t  FILEb/t  MB/t | skip/t | kvRAM MiB/t kvhit | rounds sw/round ms | refill vra
+=== engine start 2026-11-25 00:41:59
+28986  78150      0 78150 125.0 |  600  59.4   69 | 84.8   603.0 |  177.4     6.6  276.6 |   12.0 |   0.00     - |   57  2138  134.7 |  2222   946
+29145  78150  78145     5   1.0 |  600  63.8   69 | 85.4   590.3 |   70.9     0.4    0.9 |   12.1 |   0.98 96.93 |  121  3663  125.8 |     -   788
+
+[exited with code 0]

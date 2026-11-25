@@ -8259,7 +8259,10 @@ bool mlr_save(const MaskLearnState& s, const std::string& path, std::string& msg
               std::fwrite(s.lv.data(), 1, s.lv.size(), f) == s.lv.size() &&
               std::fwrite(s.cost.data(), sizeof(double), s.cost.size(), f) == s.cost.size();
     ok = std::fclose(f) == 0 && ok;
-    if (!ok || std::rename(tmp.c_str(), path.c_str()) != 0) {
+    // LOCAL WINDOWS FIX: std::rename does not replace an existing mask-learn-<hex>.bin on Windows (only the first save worked)
+    std::error_code rename_ec;
+    if (ok) std::filesystem::rename(tmp, path, rename_ec);
+    if (!ok || rename_ec) {
         msg = "not written: " + path;
         return false;
     }

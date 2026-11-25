@@ -1,0 +1,33 @@
+== 22:29:07 config ramadapt: STRATA_RAM_ADAPT=4
+server stopped, engine exited after 7 s
+loaded=1 after 35 s
+22:32:25 ramadapt-p1: first token after 126.3 s, total 150.3 s, 3629 content chars, 1779 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 1500, 'total_tokens': 79650, 'prompt_tokens_details': {'cached_tokens': 0}}
+22:32:50 ramadapt-p2: first token after 1.9 s, total 24.9 s, 3157 content chars, 1972 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 1500, 'total_tokens': 79650, 'prompt_tokens_details': {'cached_tokens': 78145}}
+22:33:13 ramadapt-d1: first token after 1.9 s, total 23.5 s, 4379 content chars, 438 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 1500, 'total_tokens': 79650, 'prompt_tokens_details': {'cached_tokens': 78145}}
+22:33:37 ramadapt-d2: first token after 1.9 s, total 23.3 s, 2899 content chars, 2139 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 1500, 'total_tokens': 79650, 'prompt_tokens_details': {'cached_tokens': 78145}}
+22:34:01 ramadapt-d3: first token after 1.9 s, total 24.1 s, 2988 content chars, 1817 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 1500, 'total_tokens': 79650, 'prompt_tokens_details': {'cached_tokens': 78145}}
+22:38:05 reads: 30 done, 244 s, usage {'prompt_tokens': 46122, 'completion_tokens': 8, 'total_tokens': 46130, 'prompt_tokens_details': {'cached_tokens': 44866}}
+22:38:32 ramadapt-r1: first token after 2.4 s, total 26.6 s, 4065 content chars, 1043 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 1500, 'total_tokens': 79650, 'prompt_tokens_details': {'cached_tokens': 78145}}
+22:38:56 ramadapt-r2: first token after 0.5 s, total 24.0 s, 1685 content chars, 3588 reasoning chars, usage {'prompt_tokens': 78150, 'completion_tokens': 1500, 'total_tokens': 79650, 'prompt_tokens_details': {'cached_tokens': 78145}}
+-- engine run starts at log line 22471
+line   ctx   reuse  read  rd_s |  gen  tps  acc% | hit%  look/t | RAMb/t  FILEb/t  MB/t | skip/t | kvRAM MiB/t kvhit | rounds sw/round ms | refill vramfree
+=== engine start 2026-11-24 22:29:20
+22582  78150      0 78150 126.0 | 1500  62.3   61 | 87.7   637.9 |  104.9     3.2  110.8 |   11.1 |   0.00     - |  216  4997  111.3 |  2222   939
+22741  78150  78145     5   1.8 | 1500  65.2   67 | 86.3   610.9 |   66.4     1.3    1.7 |   12.1 |   0.87 97.41 |  408  9847  115.7 |     -   723
+22760  78150  78145     5   1.8 | 1500  69.3   69 | 88.0   600.4 |   57.5     1.1    1.2 |   10.1 |   0.72 97.59 |  607 13507  113.9 |     -     -
+22778  78150  78145     5   1.7 | 1500  69.7   69 | 87.1   606.1 |   61.9     1.2    1.4 |   11.0 |   0.67 97.69 |  788 17281  115.4 |     -     -
+22796  78150  78145     5   1.8 | 1500  67.3   67 | 88.1   606.8 |   57.2     1.2    1.5 |   10.3 |   0.74 97.69 |  991 21161  114.4 |     -     -
+23390  78150  78145     5   2.3 | 1500  61.9   63 | 87.5   632.4 |   60.8     3.1    3.2 |   11.1 |   0.01 96.98 | 1257 28041  117.4 |     -     -
+23407  78150  78145     5   0.4 |  988  63.4   73 | 86.5   573.8 |   62.6     3.3    3.5 |   11.4 |   0.86 97.55 | 1383 30490  118.2 |     -     -
+23426  79156  79137    19   0.2 |  494  64.7   71 | 86.9   587.5 |   60.0     3.2    3.5 |   10.4 |   1.64 97.46 | 1446 31908  118.4 |     -     -
+strata decode timing: 5 windows, avg T 2.60, 1.60 tokens/window, 51.82 ms/window = verify 47.83 (GPU-reach wait 29.52 + per-layer host 14.94 [plan 0.20 actq 0.36 jobs 5.62 CPU 8.56] + stage 0.02) + commit/emit 0.06 + draft 3.82; per layer-window: CPU experts 2.40 (2.72 entries), VRAM hits 22.66, PCIe 0.00; adapt wait 0.11 join 0
+strata decode timing: 4 windows, avg T 2.25, 2.00 tokens/window, 46.99 ms/window = verify 43.51 (GPU-reach wait 30.77 + per-layer host 9.90 [plan 0.16 actq 0.30 jobs 2.55 CPU 6.72] + stage 0.02) + commit/emit 0.06 + draft 3.33; per layer-window: CPU experts 1.91 (2.23 entries), VRAM hits 19.62, PCIe 0.00; adapt wait 0.09 join 0.
+strata decode timing: 5 windows, avg T 2.20, 1.60 tokens/window, 52.59 ms/window = verify 48.07 (GPU-reach wait 35.61 + per-layer host 9.39 [plan 0.15 actq 0.30 jobs 2.30 CPU 6.48] + stage 0.02) + commit/emit 0.05 + draft 4.37; per layer-window: CPU experts 1.78 (2.05 entries), VRAM hits 19.32, PCIe 0.00; adapt wait 0.09 join 0.
+strata decode timing: 618 windows, avg T 3.26, 2.43 tokens/window, 39.23 ms/window = verify 36.34 (GPU-reach wait 18.08 + per-layer host 15.85 [plan 0.23 actq 0.42 jobs 4.19 CPU 10.80] + stage 0.02) + commit/emit 0.07 + draft 2.72; per layer-window: CPU experts 3.23 (4.01 entries), VRAM hits 27.97, PCIe 0.00; adapt wait 0.09 joi
+strata decode timing: 385 windows, avg T 3.13, 2.57 tokens/window, 40.50 ms/window = verify 37.71 (GPU-reach wait 17.94 + per-layer host 17.55 [plan 0.23 actq 0.43 jobs 5.09 CPU 11.57] + stage 0.02) + commit/emit 0.07 + draft 2.62; per layer-window: CPU experts 3.51 (4.15 entries), VRAM hits 26.52, PCIe 0.00; adapt wait 0.09 joi
+strata decode timing: 193 windows, avg T 3.19, 2.56 tokens/window, 39.54 ms/window = verify 36.73 (GPU-reach wait 17.80 + per-layer host 16.70 [plan 0.23 actq 0.42 jobs 4.94 CPU 10.90] + stage 0.02) + commit/emit 0.07 + draft 2.64; per layer-window: CPU experts 3.27 (4.09 entries), VRAM hits 27.23, PCIe 0.00; adapt wait 0.09 joi
+strata serve: work done: swap rounds 0 (0 swaps, 0 quality), ram evictions 0, look-ahead 70748 predicted experts (0 layers skipped), promoted 0, promotion hits 0, promotion skips (no place) 0
+server stopped, engine exited after 8 s
+== 22:39:09 config ramadapt done
+
+[exited with code 0]

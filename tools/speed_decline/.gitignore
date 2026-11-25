@@ -1,0 +1,15 @@
+# private or generated: the exported Hermes session, requests built from it, answers, run records, server output,
+# the learned-state snapshot, and temporary config copies (they hold the API key)
+session-export.jsonl
+request.json
+conv.json
+answer-*.txt
+sim-*.json
+same-*.json
+memwatch.csv
+server-*.out
+state-snap/
+cfg-*.json
+state-live/
+patches/
+state-live2/

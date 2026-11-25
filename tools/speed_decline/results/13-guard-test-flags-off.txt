@@ -1,0 +1,33 @@
+== 02:11:18 guard-off: config cfg-new-off.json extra: none
+server stopped, engine exited after 0 s
+learned state restored to the snapshot
+loaded=1 after 35 s
+guard test off
+02:12:58 G1 short tail, cold read             59.2 s, 216 chars
+02:13:10 G2 next turn                         12.8 s, 1120 chars
+02:13:59 V1 healthy conversation, cold read   48.8 s, 845 chars
+02:14:12 V2 its next turn (before)            12.8 s, 1443 chars
+02:14:22 V3 other conversation, cancelled     10.5 s  (the client left)
+02:15:13 V4 first conversation (after)        47.1 s, 0 chars
+02:15:50 V5 its next turn (after)             37.2 s, 0 chars
+-- engine run starts at log line 30797: engine-test\strata.exe
+line   ctx   reuse  read  rd_s |  gen  tps  acc% | hit%  look/t | RAMb/t  FILEb/t  MB/t | skip/t | kvRAM MiB/t kvhit | rounds sw/round ms | refill vramfree
+=== engine start 2026-11-25 02:11:25
+30904  26339      0 26339  49.2 |  600  60.7   69 | 83.5   596.4 |  120.7     5.4  120.8 |   13.1 |   0.00     - |   74  2148  132.6 |  2222     -
+31062  26452  26334   118   3.4 |  600  64.6   70 | 83.4   589.1 |   85.5     2.1    5.8 |   12.7 |   0.39 98.77 |  150  4191  127.6 |   428   852
+31084  21676      0 21676  39.4 |  600  64.4   67 | 83.9   616.0 |  110.3     5.4   86.7 |   14.3 |   0.11 99.21 |  223  5624  128.3 |  2178     -
+31100  21912  21671   241   3.7 |  600  66.5   70 | 84.1   594.2 |   82.4     2.4    6.3 |   13.8 |  -0.09 98.73 |  299  7172  126.1 |   428     -
+31119  26322      0     0  14.4 |    0   0.0    0 |  0.0     0.0 | 7139.0   993.0 17735.8 |    0.0 |   9.70 99.33 |  299  7192  126.4 |  2222     -
+31133  22254  21907   347   6.5 |  600  15.1   74 | 55.5   472.0 |  106.8    47.4  104.3 |  110.0 |  -0.43 100.00 |  371  7607  208.0 |   451     -
+31151  22278  22249    29   1.4 |  600  16.8   87 | 57.3   410.7 |   86.3    38.5   82.9 |  111.1 |   0.39 98.73 |  427  7816  263.3 |     -     -
+strata serve: adaptive tier asynchronous (--adapt-async 1): up to 64 swaps per round, a round every 1 windows
+strata serve: prompt tail: 2782 tokens, 20115 experts not in VRAM among its hottest; the refill took 2222 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 113 tokens, 9937 experts not in VRAM among its hottest; the refill took 428 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 9895 tokens, 22836 experts not in VRAM among its hottest; the refill took 2178 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: 236 tokens, 9875 experts not in VRAM among its hottest; the refill took 428 of them (the rest of the loan back as before), usage seeded
+strata serve: the prompt read failed with a STOP pending: cancelled
+strata serve: prompt tail: 2765 tokens, 4799 experts not in VRAM among its hottest; the refill took 2222 of them (the rest of the loan back as before)
+strata serve: prompt tail: 342 tokens, 11123 experts not in VRAM among its hottest; the refill took 451 of them (the rest of the loan back as before), usage seeded
+strata serve: prompt tail: none (the prompt's last chunk was not read on the prefill path)
+server stopped, engine exited after 6 s
+== 02:16:01 guard-off finished

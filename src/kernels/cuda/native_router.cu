@@ -32,6 +32,8 @@
 #include <cfloat>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <system_error>
 #include <stdexcept>
 #include <cstdio>
 #include <iterator>
@@ -2789,7 +2791,11 @@ static bool la_save_inst(LaLearn& s, const char* path, std::string& msg) {
     }
     const bool closed = std::fclose(f) == 0;
     if (!ok || !closed) { std::remove(tmp.c_str()); msg = "write failed"; return false; }
-    if (std::rename(tmp.c_str(), path) != 0) { std::remove(tmp.c_str()); msg = "rename failed"; return false; }
+    // LOCAL WINDOWS FIX: std::rename does not replace an existing file on Windows, so every save after the first failed with "rename failed";
+    // std::filesystem::rename replaces it (MoveFileEx / rename(2)), as the other writers in this codebase already rely on
+    std::error_code rename_ec;
+    std::filesystem::rename(tmp, path, rename_ec);
+    if (rename_ec) { std::remove(tmp.c_str()); msg = "rename failed"; return false; }
     return true;
 }
 bool la_learn_save(const char* path, std::string& msg) {

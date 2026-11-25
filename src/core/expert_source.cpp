@@ -4786,6 +4786,58 @@ bool FileExpertSource::replace_resident(int64_t layer, int64_t in, int64_t out) 
     return true;
 }
 
+void FileExpertSource::ram_places(int64_t& held, int64_t& free_places) const {
+    held = 0;
+    free_places = 0;
+    for (const uint64_t at : complement_offsets_)
+        if (at != kNoComplement) ++held;
+    std::lock_guard<std::mutex> lk(tier_mu_);
+    for (const std::vector<uint64_t>& v : complement_free_) free_places += (int64_t) v.size();
+}
+
+int64_t FileExpertSource::free_places_in(int64_t layer) const {
+    if (layer < 0 || layer >= n_layers_) return 0;
+    std::lock_guard<std::mutex> lk(tier_mu_);
+    return (size_t) layer < complement_free_.size() ? (int64_t) complement_free_[(size_t) layer].size() : 0;
+}
+
+bool FileExpertSource::fill_free_place(int64_t layer, int64_t in) {
+    if (!complement_ready_ || complement_host_ == nullptr || exchange_storage_.active() || !staged_.empty() ||
+        layer < 0 || layer >= n_layers_ || in < 0 || in >= n_expert_ || promo_pause_.load())
+        return false;
+    const size_t i_in = (size_t) layer * (size_t) n_expert_ + (size_t) in;
+    if (i_in >= complement_offsets_.size() || complement_offsets_[i_in] != kNoComplement) return false;   // already held
+    if (!override_.empty() && override_[i_in] != nullptr) return false;
+    if (free_places_in(layer) <= 0) return false;
+    {   // an io worker may be reading this expert into a place of its own (STRATA_LOOKAHEAD_PROMOTE): not twice
+        std::lock_guard<std::mutex> lk(promo_mu_);
+        if (i_in < promo_busy_.size() && promo_busy_[i_in]) return false;
+    }
+    const uint64_t bytes = layer_blob_bytes_[(size_t) layer];
+    // read beside the copy first: a failed read takes no place
+    if (ram_adapt_buf_.size() < (size_t) bytes) ram_adapt_buf_.resize((size_t) bytes);
+    const auto t0 = std::chrono::steady_clock::now();
+    if (!copy_from_files(layer, in, ram_adapt_buf_.data())) return false;
+    file_us_.fetch_add((uint64_t) std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count(),
+                       std::memory_order_relaxed);
+    file_read_bytes_.fetch_add(bytes, std::memory_order_relaxed);
+    uint64_t at = 0;
+    {
+        std::lock_guard<std::mutex> lk(tier_mu_);
+        if ((size_t) layer >= complement_free_.size() || complement_free_[(size_t) layer].empty()) return false;
+        at = complement_free_[(size_t) layer].back();
+        if (at > complement_bytes_ || bytes > complement_bytes_ - at) return false;
+        complement_free_[(size_t) layer].pop_back();
+    }
+    // nothing names the place until the offset is written: no reader can be on it
+    std::memcpy((uint8_t*) complement_host_ + (size_t) at, ram_adapt_buf_.data(), (size_t) bytes);
+    complement_offsets_[i_in] = at;
+    sync_cheap(i_in);   // STRATA_ROUTE_RAM_FLOOR
+    if (promo_flag_ != nullptr) promo_flag_[i_in].store(0, std::memory_order_relaxed);
+    ++ram_fills_;
+    return true;
+}
+
 void FileExpertSource::commit_copies() {
     fs_hold_staged(true);   // #2134: held until commit_flip has pointed `out` at its new place
     if (exchange_storage_.active()) return;   // STRATA_EXCHANGE_ROTATE: ownership moves in commit_flip, nothing to copy
@@ -8365,7 +8417,11 @@ bool ArenaExpertSource::open(const std::string& pack_dir, int64_t n_layers, int6
             ok = std::fwrite(pad.data(), 1, pad.size(), f) == pad.size();
         }
         if (f) ok = std::fclose(f) == 0 && ok;
-        if (ok) ok = std::rename(tmp.c_str(), path.c_str()) == 0;
+        if (ok) {   // LOCAL WINDOWS FIX: std::rename does not replace an existing file on Windows
+            std::error_code rename_ec;
+            std::filesystem::rename(tmp, path, rename_ec);
+            ok = !rename_ec;
+        }
         if (!ok) std::remove(tmp.c_str());
         std::fprintf(stderr, "strata generate: STRATA_ARENA_MMAP: %s %s (the next start maps it)\n",
                      ok ? "wrote" : "could NOT write", path.c_str());

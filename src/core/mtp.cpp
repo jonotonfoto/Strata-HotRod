@@ -5,6 +5,8 @@
 #include "strata/core/spec_prob.hpp"
 #include "strata/core/on_device.hpp"
 #include "strata/core/progress.hpp"
+#include <filesystem>
+#include <system_error>
 
 #include "strata/core/native_head.hpp"
 #include "strata/core/peer_experts.hpp"
@@ -161,7 +163,8 @@ struct MtpTally {
         if (FILE* f = std::fopen(tmp.c_str(), "wb")) {
             std::fwrite(h.data(), sizeof(float), h.size(), f);
             std::fclose(f);
-            std::rename(tmp.c_str(), path);
+            std::error_code rename_ec;   // LOCAL WINDOWS FIX: std::rename does not replace an existing file on Windows
+            std::filesystem::rename(tmp, path, rename_ec);
         }
         unsigned int n = 0;   // <file>.seq: u32 tokens, then their ids (int32 x 10 each), then their weights (float x 10 each)
         if (seq_n == nullptr || cudaMemcpy(&n, seq_n, sizeof(n), cudaMemcpyDeviceToHost) != cudaSuccess) return;
@@ -176,7 +179,8 @@ struct MtpTally {
             std::fwrite(si.data(), 4, si.size(), f);
             std::fwrite(sw.data(), 4, sw.size(), f);
             std::fclose(f);
-            std::rename(st.c_str(), sp.c_str());
+            std::error_code rename_ec;   // LOCAL WINDOWS FIX: see above
+            std::filesystem::rename(st, sp, rename_ec);
         }
     }
 } g_tally;

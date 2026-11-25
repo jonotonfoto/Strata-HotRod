@@ -25,6 +25,8 @@ import os
 TAIL_STEPS = int(os.environ.get('SIM_TAIL_STEPS', 6))
 SUMMARY_TOKENS = int(os.environ.get('SIM_SUMMARY_TOKENS', 2000))   # the summary request's answer cap (Hermes wrote 2,936 and 13,003)
 CYCLES = int(os.environ.get('SIM_CYCLES', 1))                    # compressions in one run
+if os.environ.get('SIM_ANSWER_TOKENS'):                          # another cycle of answer caps, e.g. 100,200,300,150
+    CYCLE = [int(x) for x in os.environ['SIM_ANSWER_TOKENS'].split(',')]
 
 def ask(n):
     return ("Не вызывая инструменты: подробно и развёрнуто опиши, что показал последний результат, что из этого "

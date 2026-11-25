@@ -24,6 +24,7 @@ for arm in "$@"; do
     spill)        n=25; flags="$BASEFLAGS STRATA_RAM_ADAPT_FILL=1 STRATA_LOAN_SPILL=1";     env_sim="" ;;
     aux)          n=26; flags="$BASEFLAGS STRATA_RAM_ADAPT_FILL=1";                         env_sim=""; cmd="python aux_test.py aux" ;;
     long)         n=27; flags="$BASEFLAGS STRATA_RAM_ADAPT_FILL=1 STRATA_RAM_ADAPT_KEEP=1 STRATA_TAIL_GUARD=1 STRATA_TAIL_MIN_TOKENS=32"; env_sim="SIM_CYCLES=4" ;;
+    longctl)      n=29; flags="";                                                           env_sim="SIM_CYCLES=4" ;;
     *) echo "unknown arm $arm"; exit 2 ;;
   esac
   cfg="$(python make_cfg.py "m-$arm" "exe=$EXE" $flags | tail -1)"

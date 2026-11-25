@@ -181,7 +181,37 @@ tokens read, tok/s, VRAM hit rate, RAM and file blobs per token). Healthy: a hit
 blobs per token on requests that read little. File blobs per token climbing hour after hour is the decline these
 fixes are for.
 
-## 5. What these do not fix
+## 5. Updating later
+
+Close the model window (a running engine cannot be replaced), then from the Strata folder:
+
+```
+Windows:  UPDATE-HOTROD.bat
+Linux:    ./update-hotrod.sh
+```
+
+It does two things:
+
+1. upstream's own `UPDATE.bat` / `update.sh`: `git pull --ff-only` from the address the folder was cloned from (it
+   prints that address first; it must be this fork), then setup's update step. For an engine compiled here
+   (`engine/BUILD.json` says `"source": "local"`) that step compiles the engine again when the source changed. The
+   model files are not touched, and setup keeps the `"env"` entries it did not write itself.
+2. `tools/speed_decline/apply_env.py`: adds the variables of
+   [env.example.json](../tools/speed_decline/env.example.json) that a `strata-<model>.json` does not have yet. A
+   variable that is already there keeps its value, nothing is removed, and a copy of the config is saved first as
+   `<name>.json.bak-speed-fixes`. It also says whether the engine is the compiled one.
+
+So a variable this fork adds to its recommendation later reaches an installed copy; one it withdraws does not leave by
+itself - this file will say so, take it out by hand. `apply_env.py --dry-run` only prints what it would add.
+
+Checked on Windows 10 with a stand-in for `UPDATE.bat` and a test config (both outcomes of the update, the variables
+added, the other keys kept). The whole path on a real install - pull, compile, variables - and `update-hotrod.sh`
+were not run.
+
+If `git pull` stops because files were changed in the folder, `git status` lists them; the update changes nothing
+until that is settled.
+
+## 6. What these do not fix
 
 - Short answers (100-400 tokens) run slower than long ones (26-44 tok/s against 48-58 here): the first windows after
   a prompt read are slow.

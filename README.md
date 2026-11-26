@@ -703,3 +703,17 @@ supporting evidence and not a proof of the rule used here.
 
 </div>
 </details>
+
+## Keeping an install up to date
+
+This fork moves; your install should move with it. The `Update/` folder does exactly that:
+
+- **A person:** double-click `Update/update.bat` and press Enter. Restart the server after it finishes.
+- **An agent:** read `Update/UPDATE.md` and run `python Update/update.py`.
+
+The updater touches code only (`serve/`, `src/`, `include/`, `tools/`): your models,
+configs, `.bat` launchers and venv stay untouched, and every replaced file gets a copy
+under `backups/update-<date>/`.
+
+Got this repo the old way (no `Update/` folder)? Bootstrap once: download the repo zip,
+copy just the `Update/` folder into your install root, run `Update/update.bat`.

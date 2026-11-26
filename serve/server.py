@@ -4570,8 +4570,12 @@ class Service:
                         if src.startswith(("http://", "https://")):
                             src = fetched[item["source"]] = Vision.download(src)   # outside the FIFO, as in prepare()
                         with self._turn(cancel):  # the encoder takes its turn with the requests (see below)
+                            self._vision_up()   # an elastic encoder sleeps between pictures: wake it first,
+                                                # like the user-image path below. without this, a picture that
+                                                # arrives after the idle-down writes to a dead pipe and the
+                                                # whole request dies with AttributeError.
                             self.vision.encode(src)
-                    except (ValueError, OSError) as e:
+                    except (ValueError, OSError, RuntimeError) as e:
                         why = str(e)
                 if why is not None:
                     print(f"[strata] a picture a tool returned was left out of the prompt: {why}", flush=True)

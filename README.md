@@ -711,9 +711,17 @@ This fork moves; your install should move with it. The `Update/` folder does exa
 - **A person:** double-click `Update/update.bat` and press Enter. Restart the server after it finishes.
 - **An agent:** read `Update/UPDATE.md` and run `python Update/update.py`.
 
-The updater touches code only (`serve/`, `src/`, `include/`, `tools/`): your models,
-configs, `.bat` launchers and venv stay untouched, and every replaced file gets a copy
-under `backups/update-<date>/`.
+The updater brings the code and the docs (`serve/`, `src/`, `include/`, `tools/`, `docs/`, `Update/`) and, when
+the engine was compiled here and its source changed, compiles the engine again (close the server first: a
+running engine cannot be replaced). Your models, configs, `.bat` launchers and venv stay untouched, and every
+replaced file gets a copy under `backups/update-<date>/`. What each update brought and what to switch on:
+[Update/CHANGELOG.md](Update/CHANGELOG.md).
+
+Newest: prompts are read faster with the opt-in per-request read plan (`STRATA_PREFILL_PLAN2`): on an RTX 4080
+SUPER 16 GB with UD-Q4_K_XL a 12.5K-token read went from 25.1 to 16.7 s and a 90K-token read from 137 to 96 s.
+How to switch it on, with a procedure for 12 GB cards (not measured there):
+[docs/SPEED_FIXES_SETUP.md](docs/SPEED_FIXES_SETUP.md), section 3a; the record:
+[docs/PREFILL_PLAN.md](docs/PREFILL_PLAN.md).
 
 Got this repo the old way (no `Update/` folder)? Bootstrap once: download the repo zip,
 copy just the `Update/` folder into your install root, run `Update/update.bat`.

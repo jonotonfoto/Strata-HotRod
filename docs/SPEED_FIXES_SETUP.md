@@ -90,6 +90,8 @@ For all four:
   rest): setup sizes them for the PC's RAM and VRAM. The measured PC ran `--resident-budget-gib 38` and
   `--adapt-async 1`; do not copy 38 to a 32 GB PC.
 - Do not add `--adapt-every` and do not add `STRATA_LOAN_SPILL` (section 3).
+- The prompt-read plan of section 3a is a separate block with sizes per card: measured values for 16 GB, a
+  procedure for 12 GB. It is not part of the block of section 3 and `apply_env.py` does not add it.
 - A longer context than setup picks costs VRAM that the expert cache then does not have; on a 12 GB card raise it only
   if the user's agent needs it, and say that the speed was not measured there.
 - Windows: a fixed page file (AI_SETUP.md step 9) if the engine reports `cudaMalloc ... out of memory` with free VRAM.
@@ -179,6 +181,84 @@ With every expert in VRAM or RAM there is nothing for them to do. They do nothin
 
 Never expose the server beyond `127.0.0.1` without `--api-key` (AGENTS.md).
 
+## 3a. The prompt-read plan (opt-in, separate from section 3)
+
+A second change, about how fast a prompt is **read**, not about the decode speed. It is also off until switched on,
+and it is tuned per card. The full record with every measurement (in Russian) is [PREFILL_PLAN.md](PREFILL_PLAN.md).
+
+What it does: with `STRATA_PREFILL_PLAN2=1` a request that fits one chunk is read in one chunk and borrows no VRAM
+for the layer map (the store of streamed experts that only later chunks of a long prompt use); a longer request is
+read layer by layer with a map large enough for a whole layer. Before, one map size served both, and it suited
+neither. It works with `--serve`, one GPU and the default prompt loan; with a layer split or `--no-prefill-borrow`
+the switch does nothing. No new way of computing: both ways of reading existed, the switch moves the border.
+
+### A 16 GB card: measured
+
+Add to the config's `"env"`, beside the keys already there, and restart the server
+([tools/prefill_plan/env.16gb.example.json](../tools/prefill_plan/env.16gb.example.json)):
+
+```json
+"STRATA_PREFILL_PLAN2": "1",
+"STRATA_PREFILL_LM_MAP_MIB": "1600",
+"STRATA_PREFILL_LM_CHUNK": "10240"
+```
+
+Measured on the PC at the top of this file (RTX 4080 SUPER 16 GB, 64 GB RAM, UD-Q4_K_XL), against the same source
+without the change, one run of the change per row:
+
+| Prompt read | Before | With the plan |
+| --- | --- | --- |
+| five short appended turns, 87-1,123 tokens | 21.2 s | 18.3 s (-14%) |
+| 5.2K tokens | 11.7 s | 10.8 s (-7%) |
+| 12.5K tokens | 25.1 s | 16.7 s (-33%) |
+| 16.7K / 19.6K tokens | 29.9 / 33.9 s | 27.3 / 29.2 s (-9% / -14%) |
+| 33.6K tokens from nothing | 58.1 s | 45.2 s (-22%) |
+| 90.4K tokens from nothing | 137.1 s | 96.4 s (-30%) |
+
+Answers at temperature 0 (63 graded tasks, 26 codes hidden in 10-44K-token conversations): 63 of 63 and 26 of 26
+with the plan, 61 of 63 in each of three runs without it. Decode on 600-token answers: 46.8 tok/s against 47.1 and
+47.2. One live agent task of 24 requests ran through with no error.
+
+Both sizes belong to this card and this model. `STRATA_PREFILL_LM_CHUNK=8192` (the default in the code) made
+requests of 16-20K tokens 6-7% **slower** than before here; 10240 fixed that.
+
+### A 12 GB card: not measured, tune it on the card
+
+**Nothing was run on a 12 GB card.** Do not copy the 16 GB values: the long plan with a 10,240-token chunk and a
+1,600 MiB map borrows about 2,000 cache slots, and a 12 GB card has far fewer (upstream's docs give 1,280 slots for
+UD-Q4_K_XL on an RTX 5070). Say to the user that this part is untested, and do this:
+
+1. Install and start the server **without** the three keys. In the engine log find
+   `expert cache N slots, X GiB of VRAM`. One slot is `X * 1024 / N` MiB.
+2. What the prompt path may borrow: `(N - 128)` slots, in MiB `(N - 128) * slot`.
+3. Take the map as 700 MiB. The chunk in tokens: `(borrowable MiB - 468 - 700) / 0.374`, rounded down to a multiple
+   of 1024. (A chunk of T tokens borrowed about `468 + 0.374 * T` MiB on the measured card with UD-Q4_K_XL; another
+   model has another slot size and another slope, so there this is only a first guess.) For 1,280 slots of 2.95 MiB
+   that gives 5120: [tools/prefill_plan/env.12gb.example.json](../tools/prefill_plan/env.12gb.example.json).
+4. Put the three keys in with those values, restart, and check the log lines of the table below.
+5. Measure both ways on that PC: `python tools/prefill_plan/load_long.py` with the keys and without them (same
+   learned files at the start of each run: [tools/prefill_plan/README.md](../tools/prefill_plan/README.md)), then
+   `python tools/prefill_plan/read_table.py <engine log>`. Keep the keys only if the reads got faster. If requests
+   of one and a half to two chunks show `layer-major state: 0 of ...`, lower the chunk by 1024 and try again.
+
+What to expect there: the half about short requests (one chunk, no map, a smaller loan) sizes itself from the
+cache and should carry over. Long requests should gain less than on 16 GB or nothing: a whole-layer map does not fit.
+The safe choice at any time is to remove all three keys; reading is then what it was.
+
+### Check in the log
+
+| Line in the log | Means |
+| --- | --- |
+| `strata serve: STRATA_PREFILL_PLAN2: a request of up to N tokens reads in one chunk ...` | the switch is on; N is the one-chunk limit this card got. No such line: the engine is the ready-made one, or the key is not in `"env"` |
+| `layer-major: K chunks, L layers, A experts streamed, B reused from the layer map (M MB, borrowed)` | a long request; M is the map size that was set |
+| `layer-major state: X of Y tokens on the GPU` | how much of a long request's state fitted in VRAM. X = 0 on requests of one and a half to two chunks: the chunk is a bad fit |
+| `layer-major not taken` | a long request found no memory to read layer by layer and read the plain way; with fitting values it does not appear |
+
+### Switching it off
+
+Remove **all three** keys and restart. Removing only `STRATA_PREFILL_PLAN2` leaves the map at 1,600 MiB for the old
+way of reading: long reads faster than before, reads of about 5K tokens 12% slower (measured).
+
 ## 4. Check in the log that they work
 
 The engine log is the file named by `"log"` in the config (`strata-<model>.log` in the Strata folder). Send two or
@@ -199,7 +279,17 @@ fixes are for.
 
 ## 5. Updating later
 
-Close the model window (a running engine cannot be replaced), then from the Strata folder:
+Two ways. Both leave the model files and the configs' other content alone.
+
+**`Update/update.bat`** (Windows; anywhere `python Update/update.py`): the newest code and docs of this fork, and
+then, for an engine compiled here, the engine compiled again when its source changed - the same step setup runs,
+only the changed files. It does not touch any config, so it adds no variables: put new ones in by hand from the
+docs. With the server running it updates the code and says to close the server and run it again for the
+engine. [Update/UPDATE.md](../Update/UPDATE.md) has the details, [Update/CHANGELOG.md](../Update/CHANGELOG.md)
+what each update brought. Its engine step was tested with a stand-in for setup (8 tests) and, read-only, on
+one real install; a real compile through it was not run.
+
+**`UPDATE-HOTROD.bat`**, the older way, which also adds the variables of section 3. Close the model window (a running engine cannot be replaced), then from the Strata folder:
 
 ```
 Windows:  UPDATE-HOTROD.bat

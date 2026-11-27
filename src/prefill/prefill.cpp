@@ -571,6 +571,12 @@ inline uint64_t lm_map_budget() {
     }();
     return bytes;
 }
+// STRATA_PREFILL_PLAN2 (see prefill.hpp): the map's bytes in the plan being priced or laid out NOW.  Mode 0: the static
+// budget, as before.  Mode 1 (a request of one chunk): none.  Mode 2 (a request of more than one chunk): the budget.
+// Measured 27 Nov on an RTX 4080 SUPER, UD-Q4_K_XL, flags only: 12.5K tokens in one chunk without the map 18.2 s against
+// 25.4 s in two chunks with it; 33.6K tokens with a 1600 MiB map and 8192-token chunks 47.4 s against 57.4 s.
+static std::atomic<int> g_plan2_mode{0};
+inline uint64_t lm_map_plan_bytes() { return g_plan2_mode.load(std::memory_order_relaxed) == 1 ? (uint64_t) 0 : lm_map_budget(); }
 
 // STRATA_PREFILL_LM_MAP_AUTO (opt-in, =1; off: the static budget, as before. 24 Oct: the per-prompt "off" keeps the memory plan, so it lacks the static =0 gain: 8.5K 17.8 s vs 11.8 s - a per-prompt plan is needed first).  Whether a layer-major prompt fills and reads the
 // expert map is decided per prompt by what this machine measured: per prompt-size bucket b (floor(log2 n), n >= 1024), the
@@ -1795,11 +1801,11 @@ bool Prefill::carve(size_t T, void* alloc) {
     // run_impl falls back to its cudaMalloc.  An owned layout (no loan) takes none.
     m.lm_map = nullptr;
     m.lm_map_bytes = 0;
-    if (o.base != nullptr && lm_map_budget() > 0) {
+    if (o.base != nullptr && lm_map_plan_bytes() > 0) {   // (PLAN2 mode 1: a one-chunk request's loan has no map)
         bool okm = true;
-        if (uint8_t* p = o.take<uint8_t>((size_t) lm_map_budget(), okm)) {
+        if (uint8_t* p = o.take<uint8_t>((size_t) lm_map_plan_bytes(), okm)) {
             m.lm_map = p;
-            m.lm_map_bytes = lm_map_budget();
+            m.lm_map_bytes = lm_map_plan_bytes();
         }
     }
     // What is left of the loan after every take above: run_impl's layer-major residual state lives here, on the GPU, for the
@@ -2359,6 +2365,16 @@ void Prefill::set_ring_budget(int slots, int64_t small_max) {
 }
 double Prefill::pinned_share() { return g_pinned_share; }
 int64_t Prefill::stream_all_min_tokens() { return stream_all_min(); }
+void Prefill::set_plan2_mode(int mode) { g_plan2_mode.store(mode == 1 || mode == 2 ? mode : 0, std::memory_order_relaxed); }
+int Prefill::plan2_mode() { return g_plan2_mode.load(std::memory_order_relaxed); }
+int64_t Prefill::plan2_lm_chunk() {
+    static const int64_t c = [] {
+        const char* v = std::getenv("STRATA_PREFILL_LM_CHUNK");
+        const long long t = v != nullptr ? std::atoll(v) : 8192;
+        return (int64_t) std::max<long long>(256, t / 256 * 256);
+    }();
+    return c;
+}
 
 uint64_t Prefill::layer_major_host_bytes(int64_t n_tokens) {
     if (n_tokens <= 0) return 0;
@@ -2560,7 +2576,7 @@ uint64_t Prefill::bytes_needed_impl(const core::ModelGeometry& g, const core::Se
     strata::kernels::KvHostPools stage;
     take_stage(o, ss, s, stage, ok);
     // the layer-major expert map, borrowed (carve takes it from the same loan, last); an owned layout keeps cudaMalloc
-    if (!owned_pages && lm_map_budget() > 0) o.take<uint8_t>((size_t) lm_map_budget(), ok);
+    if (!owned_pages && lm_map_plan_bytes() > 0) o.take<uint8_t>((size_t) lm_map_plan_bytes(), ok);
     return o.used + (8u << 20);   // alignment slack
 }
 
@@ -6048,7 +6064,8 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
             lmh.map_shared = true;
             lm_cap = (size_t) m.lm_map_bytes;
             lm_map_src = "borrowed";
-        } else if (const size_t budget = lm_map_use ? (size_t) lm_map_budget() : 0; budget != 0) {
+        } else if (const size_t budget = lm_map_use && g_plan2_mode.load(std::memory_order_relaxed) == 0 ? (size_t) lm_map_budget() : 0;
+                   budget != 0) {   // (PLAN2: the map comes from the loan or not at all - no cudaMalloc on a full card)
             // the expert map: as much of the device as the first try gets (a layer's experts that do not fit stream as before),
             // sized from STRATA_PREFILL_LM_MAP_MIB (=0: no map at all - it used to mean a fixed 700 MiB cudaMalloc here instead)
             for (const size_t want : {budget, std::min(budget, (size_t) 256 << 20)}) {

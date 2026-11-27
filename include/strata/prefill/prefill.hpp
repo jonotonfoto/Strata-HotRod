@@ -147,6 +147,15 @@ public:
     /// #583: the auto chunk scan's byte-budget ring, for chunks above `small_max` (0.1.39's auto chunk: a prompt that
     /// fits it keeps 0.1.39's ring).  0 slots = none.  A layer split's set_ring_override and STRATA_PREFILL_RING win.
     static void set_ring_budget(int slots, int64_t small_max);
+    /// STRATA_PREFILL_PLAN2 (opt-in, the serve loan on one GPU): two memory plans instead of one.  Mode 0 (default):
+    /// the layer-major expert map is part of every plan, as before.  Mode 1: the plan of a request that reads in ONE
+    /// chunk - no map in `bytes_needed` / `carve` (a one-chunk read never uses it).  Mode 2: the plan of a request of
+    /// more than one chunk - the map (STRATA_PREFILL_LM_MAP_MIB) is in the loan.  The serve loop sets 1 before it
+    /// sizes the chunk and 2 only around a long request's loan; nothing else sets it.
+    static void set_plan2_mode(int mode);
+    static int plan2_mode();
+    /// the chunk of a mode-2 request (STRATA_PREFILL_LM_CHUNK, default 8192; whole 256s, at least 256)
+    static int64_t plan2_lm_chunk();
 
     /// Device bytes `init` needs for a chunk of `chunk` tokens (what a borrowed region must hold).  `src`: init gets an
     /// ExpertSource (carve picks the fused MoE layout only then).

@@ -9048,6 +9048,8 @@ int main(int argc, char** argv) {
             int32_t first_now = -1;        // where its buffers are laid out now
             int64_t lent_chunk = 0;
             std::vector<std::pair<int32_t, int32_t>> lent;
+            bool lent_multi = false;       // STRATA_PREFILL_PLAN2: the loan out now is a long request's (the map is in it)
+            bool laid_multi = false;       // ... and the layout its buffers have now
         };
         // bytes -> slots for one cache: exact when it knows its per-slot offsets (a native pack's blobs differ
         // per layer), otherwise max_blob each.
@@ -9077,6 +9079,15 @@ int main(int argc, char** argv) {
         // a cache too small to lend the prompt path its buffers would make it allocate them on top - on a card
         // whose cache already filled its reserve, that is the over-subscription the auto sizing avoids - so the
         // chunk is the largest one EVERY participant can lend (a smaller chunk only reads slower)
+        // STRATA_PREFILL_PLAN2=1 (opt-in; one GPU, a borrowed loan): two memory plans for the prompt path instead of one.
+        // A request that fits one chunk reads in one chunk and its loan holds no layer map (the chunk below is sized
+        // without the map, so it is the largest one-chunk read); a longer request reads layer-major in chunks of
+        // STRATA_PREFILL_LM_CHUNK (8192) with the map (STRATA_PREFILL_LM_MAP_MIB) in its loan.  Off: one plan, as before.
+        const bool plan2 = pf_borrow && d_res != nullptr && !multi_gpu && stages.empty() && !o.prefill_head_alias && [] {
+            const char* v = std::getenv("STRATA_PREFILL_PLAN2");
+            return v != nullptr && std::atoi(v) != 0;
+        }();
+        if (plan2) strata::prefill::Prefill::set_plan2_mode(1);
         if (pf_borrow && d_res != nullptr) {
             pf_parts.push_back({&xcache, &ss, &sp, -1, 0, multi_gpu ? split_at[0] : g.n_layers, -1, -1, 0, {}});
             for (auto& st : stages)
@@ -9221,6 +9232,10 @@ int main(int argc, char** argv) {
                     p.first = (int32_t) (p.cache->slots() - part_slots(p, chunk));
                     p.first_now = p.first;
                 }
+                if (plan2)
+                    std::fprintf(stderr, "strata serve: STRATA_PREFILL_PLAN2: a request of up to %lld tokens reads in one chunk "
+                                         "with no layer map in its loan; a longer one reads layer-major in chunks of %lld tokens\n",
+                                 (long long) chunk, (long long) std::min<int64_t>(chunk, strata::prefill::Prefill::plan2_lm_chunk()));
                 // #340: a split stage whose card still has room for the chunk's buffers (its cache already holds
                 // every expert of its layers, so auto stopped short of its VRAM) keeps them as its own instead of
                 // borrowing cache slots: nothing of it is lent, streamed during the prompt or refilled after it.
@@ -15371,8 +15386,17 @@ int main(int argc, char** argv) {
                                      (long long) q, (long long) o.batch_quantum_ms, rate * 1000.0);
                     }
                 }
+                // STRATA_PREFILL_PLAN2: a segment longer than one chunk is a long request - layer-major, the map in its loan,
+                // its chunk at most STRATA_PREFILL_LM_CHUNK.  Mode 2 only while this loan is priced and laid out (the guard).
+                const bool multi = plan2 && tokens > o.prefill_chunk;
+                struct Plan2Guard {
+                    bool on;
+                    ~Plan2Guard() { if (on) strata::prefill::Prefill::set_plan2_mode(1); }
+                } plan2_guard{multi};
+                if (multi) strata::prefill::Prefill::set_plan2_mode(2);
                 // `exact`: a planned segment read on - the loan it was read with (what is left would size another)
-                const int64_t want = exact > 0 ? std::min(exact, o.prefill_chunk) : want_seg;
+                const int64_t want = exact > 0 ? std::min(exact, o.prefill_chunk)
+                                   : multi ? std::min(want_seg, strata::prefill::Prefill::plan2_lm_chunk()) : want_seg;
                 if (want <= 0) {
                     e = "prefill: cannot lend buffers for an empty request segment";
                     return false;
@@ -15381,7 +15405,8 @@ int main(int argc, char** argv) {
                 for (PfPart& p : pf_parts) {
                     if (p.first < 0) continue;
                     if (!p.lent.empty()) {
-                        if (want <= p.lent_chunk) continue;            // its current loan already covers this
+                        // (PLAN2: a long segment does not read on a one-chunk loan - that loan has no map)
+                        if (want <= p.lent_chunk && !(multi && !p.lent_multi)) continue;   // its current loan already covers this
                         // ONLY this participant's loan goes back: `refill` would return the other participants'
                         // loans too, and their buffers are still laid out in their caches - marking those slots
                         // resident again would hand the next window a prompt buffer in place of an expert
@@ -15426,9 +15451,10 @@ int main(int argc, char** argv) {
                                 p.cache->slots() - 128 - need_p));
                         first = (int32_t) (p.cache->slots() - need_p - extra_p);
                     }
-                    if (want_p != p.sp->chunk() || first != p.first_now) {
+                    if (want_p != p.sp->chunk() || first != p.first_now || (plan2 && multi != p.laid_multi)) {
                         if (!p.sp->relayout(want_p, p.cache->device_slot(first), part_bytes(p, first), e)) return false;
                         p.first_now = first;
+                        p.laid_multi = multi;
                     }
                     // E1 (the RAM tier on): each expert this loan takes out of VRAM goes down into the RAM copy first, while its
                     // slot still holds it, so the refill after the prompt reads it from RAM (blob_stable takes RAM first).  The
@@ -15476,6 +15502,7 @@ int main(int argc, char** argv) {
                             }
                         }
                     p.lent_chunk = want_p;
+                    p.lent_multi = multi;
                 }
                 for (const PfPart& p : pf_parts)
                     if (p.first >= 0) seg_lend = std::max(seg_lend, p.lent_chunk);
@@ -15485,6 +15512,10 @@ int main(int argc, char** argv) {
                     for (const PfPart& p : pf_parts) n_lent += (int64_t) p.lent.size();
                     std::fprintf(stderr, "strata trace: lent %lld slots for %lld tokens in %.1f ms\n", (long long) n_lent,
                                  (long long) want, std::chrono::duration<double, std::milli>(Clock::now() - t_ln).count());
+                    if (plan2)
+                        std::fprintf(stderr, "strata trace: read plan: %s (a segment of %lld tokens, chunk %lld)\n",
+                                     multi ? "layer-major with the layer map" : "one chunk, no layer map", (long long) tokens,
+                                     (long long) want);
                     std::fflush(stderr);
                 }
                 return true;

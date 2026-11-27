@@ -58,6 +58,10 @@ try:   # serve/prompt_cache.py: the prompt cache on disk (config "prompt_cache_p
     from .prompt_cache import PromptCache
 except ImportError:
     from prompt_cache import PromptCache
+try:   # serve/prompt_trace.py: the opt-in diagnostic that names the piece of a prompt that changed (config "prompt_trace_path")
+    from . import prompt_trace
+except ImportError:
+    import prompt_trace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -3637,6 +3641,7 @@ class Service:
         self.warm_lock = threading.Lock()
         self.slot_save_path = None                    # --slot-save-path: /slots/0?action=save|restore (off when None)
         self.pcache = None                            # the prompt cache on disk (config "prompt_cache_path"; off when None)
+        self.ptrace = None                            # the prompt trace (config "prompt_trace_path"; off when None)
         self.embeddings = threading.local()           # the current request's image embeddings file (GENI)
         self.api_key = ""                              # when set, /v1/* needs it (Bearer or x-api-key)
         # #458 (opt-in, the config's "effort_position": "end"): a non-default reasoning effort goes in a short system
@@ -4528,9 +4533,13 @@ class Service:
         if changed:
             prompt, plain = unmark_think_literals(prompt, self.literals)
         if self.prompts is not None:            # #567: only what follows the last special shared with a recent prompt
-            return self.prompts.encode(prompt, plain, store)
-        return self.tok.encode(prompt, parse_special=True, plain=plain) if plain else \
-            self.tok.encode(prompt, parse_special=True)
+            ids = self.prompts.encode(prompt, plain, store)
+        else:
+            ids = self.tok.encode(prompt, parse_special=True, plain=plain) if plain else \
+                self.tok.encode(prompt, parse_special=True)
+        if store and self.ptrace is not None:   # opt-in diagnostic ("prompt_trace_path"): which piece of the prompt changed
+            self.ptrace.record(prompt, ids)
+        return ids
 
     @contextlib.contextmanager
     def _turn(self, cancel=None):
@@ -7989,6 +7998,11 @@ def main() -> int:
             raise SystemExit(f"[strata] {e}")
         print(f"[strata] slot save/restore on: {svc.slot_save_path} (session files are kept until deleted: "
               "about 1.2 GB per 63K-token conversation; restore only files this server wrote)", flush=True)
+    # "prompt_trace_path" (or STRATA_PROMPT_TRACE in the server's environment; off by default): serve/prompt_trace.py writes, for
+    # every request, the hashes of the prompt's pieces and names the first piece that differs from earlier requests - never text.
+    svc.ptrace = prompt_trace.from_config(cfg, str(ROOT))
+    if svc.ptrace is not None:
+        print(f"[strata] prompt trace on: {svc.ptrace.path} (hashes and lengths of the prompt's pieces, no text)", flush=True)
     # "prompt_cache_path": the prompt cache on disk (serve/prompt_cache.py): a long prompt that had to be read is saved by itself, and
     # restored by itself before a request that continues it, also after a restart.  An entry carries a fingerprint of the engine
     # file, its arguments and the model, so a rebuilt engine or another setting never restores an old one.

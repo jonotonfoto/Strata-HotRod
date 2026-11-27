@@ -1433,6 +1433,7 @@ private:
     uint64_t mapped_bytes_ = 0;
     std::vector<uint64_t> layer_offsets_, layer_blob_bytes_;
     void* complement_arena_ = nullptr;
+    bool complement_arena_aligned_ = false;   ///< Windows, STRATA_PIN_SEGS_WIN=1: from _aligned_malloc (freed by _aligned_free)
     const uint8_t* complement_host_ = nullptr;
     const uint8_t* complement_device_ = nullptr;
     uint64_t complement_bytes_ = 0;

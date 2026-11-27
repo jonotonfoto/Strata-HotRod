@@ -355,4 +355,11 @@ private:
     PrefillStats stats_;
 };
 
+/// STRATA_PREFILL_EXPERT_STATS=1 (diagnostic, off by default): the engine tells the prompt read which residency
+/// entries its loan took (and when they are back), so the read's statistics can tell "was in VRAM before the loan"
+/// from "was never there".  With the switch off none of these do anything.
+bool expert_stats_on();
+void expert_stats_note_lent(std::int64_t residency_index);
+void expert_stats_clear_lent();
+
 }  // namespace strata::prefill

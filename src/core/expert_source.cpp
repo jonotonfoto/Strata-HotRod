@@ -1462,6 +1462,10 @@ void FileExpertSource::close() {
             if (complement_registered_) (void) cudaHostUnregister(complement_arena_);
             if (complement_locked_ > 0)
                 strata::platform::unlock_resident((uint8_t*) complement_arena_ + complement_lock_off_, complement_locked_);
+#if defined(_WIN32)
+            if (complement_arena_aligned_) _aligned_free(complement_arena_);
+            else
+#endif
             std::free(complement_arena_);
         }
     }
@@ -4082,6 +4086,7 @@ bool FileExpertSource::pin_cache_complement(
     }
 
     void* arena = nullptr;
+    bool arena_aligned = false;   // Windows, STRATA_PIN_SEGS_WIN=1: `arena` came from _aligned_malloc
     const uint8_t* host = nullptr;
     const uint8_t* device = nullptr;
     bool pinned_ok = false;
@@ -4103,6 +4108,10 @@ bool FileExpertSource::pin_cache_complement(
         else {
             if (partial_pin > 0) (void) cudaHostUnregister(arena);
             if (locked > 0) strata::platform::unlock_resident((uint8_t*) arena + lock_off, locked);
+#if defined(_WIN32)
+            if (arena_aligned) _aligned_free(arena);
+            else
+#endif
             std::free(arena);
         }
         arena = nullptr;
@@ -4203,6 +4212,20 @@ bool FileExpertSource::pin_cache_complement(
                 void* aligned = nullptr;
                 if (pin_segs_env && posix_memalign(&aligned, 4096, (size_t) ((bytes + 4095) / 4096 * 4096)) == 0) arena = aligned;
                 else
+#else
+                // STRATA_PIN_SEGS_WIN=1 (opt-in, Windows; off = the malloc below, as before): the arena page-aligned as on
+                // Linux.  Without it malloc's pointer is not a multiple of the page size, pin_segs_build() prints "off (the
+                // arena is not page-aligned)" and no RAM-tier expert is page-locked: every one of them is copied into the
+                // stager's pinned ring before it goes to the GPU.  STRATA_PIN_SEGS_GIB caps how much is registered.
+                static const bool pin_segs_win = [] {
+                    const char* v = std::getenv("STRATA_PIN_SEGS_WIN");
+                    return v != nullptr && v[0] != '\0' && std::atoi(v) != 0;
+                }();
+                if (pin_segs_env && pin_segs_win) {
+                    arena = _aligned_malloc((size_t) ((bytes + 4095) / 4096 * 4096), 4096);
+                    arena_aligned = arena != nullptr;
+                }
+                if (arena == nullptr)
 #endif
                 arena = std::malloc((size_t) bytes);
             }
@@ -4473,6 +4496,7 @@ bool FileExpertSource::pin_cache_complement(
     }
 
     complement_arena_ = arena;
+    complement_arena_aligned_ = arena_aligned;
     complement_host_ = host;
     complement_device_ = device;
     complement_bytes_ = bytes;

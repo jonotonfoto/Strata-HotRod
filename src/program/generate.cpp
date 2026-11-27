@@ -15241,6 +15241,7 @@ int main(int argc, char** argv) {
 #endif
                 p.lent.clear();
                 p.lent_chunk = 0;
+                if (strata::prefill::expert_stats_on()) strata::prefill::expert_stats_clear_lent();   // diagnostic: the slots are back
                 return true;
             };
             auto refill_one = [&](PfPart& p, std::string& e) -> bool {
@@ -15469,6 +15470,7 @@ int main(int argc, char** argv) {
                                     }
                                 }
                                 p.lent.emplace_back((int32_t) i, host_res[i]);
+                                if (strata::prefill::expert_stats_on()) strata::prefill::expert_stats_note_lent((int64_t) i);   // diagnostic
                                 host_res[i] = strata::core::kNotResident;
                                 any = true;
                             }

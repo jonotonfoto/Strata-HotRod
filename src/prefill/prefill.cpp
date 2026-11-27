@@ -687,6 +687,32 @@ void lm_map_record(const LmChoice& c, double ms_per_tok) {
 // left the GPU without queued work while each ~2 MB memcpy ran (~15 s of a 32K prompt on IQ3_S).  Job j - a layer's
 // j-th unpinned expert, in launch order - lands in host buffer j % kRing, which is free again once the DMA of job
 // j - kRing (recorded by the launching thread, `issued`) is done.
+// STRATA_PREFILL_EXPERT_STATS (diagnostic, off by default): where the time of moving a prompt read's experts goes.
+//   rd_*: the stager threads reading file-tier experts through the source (thread time, bytes, experts)
+//   cp_*: the stager threads copying unpinned RAM blobs into pinned buffers (thread time, bytes, experts)
+//   w_file_*, w_ram_*: the launching thread blocked until such a copy is ready (wall time, experts)
+//   dma_*: the launching thread queueing a host -> device copy of a pinned RAM blob (wall time, experts, bytes)
+//   st_*: the launching thread queueing the copy of a staged (file or unpinned) blob (wall time, bytes by kind)
+struct MoveTimes {
+    std::atomic<int64_t> rd_us{0}, rd_bytes{0}, rd_n{0}, cp_us{0}, cp_bytes{0}, cp_n{0};
+    std::atomic<int64_t> w_file_us{0}, w_file_n{0}, w_ram_us{0}, w_ram_n{0};
+    std::atomic<int64_t> dma_us{0}, dma_n{0}, dma_bytes{0}, st_us{0}, st_file_bytes{0}, st_ram_bytes{0};
+    void reset() {
+        for (std::atomic<int64_t>* a : {&rd_us, &rd_bytes, &rd_n, &cp_us, &cp_bytes, &cp_n, &w_file_us, &w_file_n, &w_ram_us, &w_ram_n,
+                                        &dma_us, &dma_n, &dma_bytes, &st_us, &st_file_bytes, &st_ram_bytes})
+            a->store(0, std::memory_order_relaxed);
+    }
+};
+MoveTimes g_mv;
+bool mv_on() {
+    static const bool on = std::getenv("STRATA_PREFILL_EXPERT_STATS") != nullptr &&
+                           std::atoi(std::getenv("STRATA_PREFILL_EXPERT_STATS")) != 0;
+    return on;
+}
+int64_t mv_us(std::chrono::steady_clock::time_point t0) {
+    return (int64_t) std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t0).count();
+}
+
 struct Stager {
     // D-5: the pinned ring's depth (STRATA_STAGER_RING, default 16) - how far the host copies can run ahead of the
     // DMAs of the unpinned experts' blobs
@@ -795,13 +821,24 @@ struct Stager {
                 uint8_t* rd[kMaxBatch];
                 size_t nr = 0;
                 core::ExpertSource* from = nullptr;
+                const bool mv = mv_on();   // STRATA_PREFILL_EXPERT_STATS: time the copies (diagnostic)
+                size_t rd_bytes = 0;
                 for (int i = j; i < j + k; ++i) {
                     const Job& jb = jobs[(size_t) i];
-                    if (jb.from == nullptr) { std::memcpy(buf[i % kRing], jb.src, jb.bytes); continue; }
+                    if (jb.from == nullptr) {
+                        const auto t0 = mv ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+                        std::memcpy(buf[i % kRing], jb.src, jb.bytes);
+                        if (mv) { g_mv.cp_us += mv_us(t0); g_mv.cp_bytes += (int64_t) jb.bytes; ++g_mv.cp_n; }
+                        continue;
+                    }
                     from = jb.from;
+                    rd_bytes += jb.bytes;
                     rl[nr] = jb.l; re[nr] = jb.e; rd[nr] = buf[i % kRing]; ++nr;
                 }
-                if (nr > 0 && !from->copy_blobs(rl, re, rd, nr)) {
+                const auto t_rd = (mv && nr > 0) ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+                const bool rd_ok = nr == 0 || from->copy_blobs(rl, re, rd, nr);
+                if (mv && nr > 0) { g_mv.rd_us += mv_us(t_rd); g_mv.rd_bytes += (int64_t) rd_bytes; g_mv.rd_n += (int64_t) nr; }
+                if (!rd_ok) {
                     // a read the drive (and the mapping) refused: the request fails (wait() answers null, the run's copy check
                     // stops it) - it used to abort the whole engine.  The jobs are still marked ready so no waiter hangs.
                     std::fprintf(stderr, "prefill: the expert source could not copy experts %d.. of layer %d (the request stops)\n",
@@ -2846,7 +2883,151 @@ struct PrefillStandin {
                          (long long) picks, (long long) reads_saved, agree ? ", agree" : "");
     }
 };
+// STRATA_PREFILL_EXPERT_STATS=1 (diagnostic, off by default; changes nothing that is computed): which experts a prompt read
+// touched and where each had to come from.  One stderr line per run: the picks (tokens x 10 per MoE layer) by the class of
+// their expert - in VRAM during the read, in VRAM before the read's loan took its slot ("lent": read back from the file),
+// in the RAM tier, on the file tier - for the router's own picks and for the dispatched ones (after the stand-ins); the
+// distinct experts and the bytes of the file classes; how many tokens each expert got (1, 2, 3-4, 5-8, 9-16, 17-32, 33+);
+// the file-tier picks by rank; the experts whose best rank is 7 or worse (decode's tail-skip rule would not compute a miss
+// like that); and how many of the experts read from the file were also read by the previous run.
+std::vector<uint8_t> g_es_lent;   // per (layer, expert): 1 while the read's loan holds the slot this expert was resident in
+std::vector<uint8_t> g_es_prev;   // per (layer, expert): 1 when the previous run read it from the file (lent or file tier)
+bool es_on() {
+    static const bool on = std::getenv("STRATA_PREFILL_EXPERT_STATS") != nullptr &&
+                           std::atoi(std::getenv("STRATA_PREFILL_EXPERT_STATS")) != 0;
+    return on;
+}
+struct PrefillExpertStats {
+    enum { VRAM = 0, LENT = 1, RAM = 2, FILE_ = 3, NC = 4, NB = 7 };
+    bool on = false;
+    int64_t n_layers = 0, n_expert = 0;
+    int64_t tokens = 0, layers = 0, picks = 0;
+    int64_t want[NC] = {}, sent[NC] = {};        // picks by class: the router's own, the dispatched ones
+    int64_t experts[NC] = {};                    // distinct (layer, expert) dispatched, by class
+    int64_t hist_e[NC][NB] = {}, hist_p[NC][NB] = {};   // by tokens per expert: experts, picks
+    int64_t bytes[NC] = {};
+    int64_t cpu_experts = 0, cpu_picks = 0;
+    int64_t rank_p[NC][3] = {};                  // dispatched picks by rank: 1-2, 3-6, 7-10
+    int64_t tail_e[NC] = {}, tail_p[NC] = {};    // experts whose best rank is 7 or worse, and their picks
+    int64_t again = 0;                           // file-read experts (LENT + FILE_) the previous run read from the file too
+    std::vector<uint8_t> cls, best, cur;
+
+    PrefillExpertStats(int64_t nl, int64_t ne) : n_layers(nl), n_expert(ne) {
+        if (!es_on() || nl <= 0 || ne <= 0) return;
+        cls.resize((size_t) ne);
+        best.resize((size_t) ne);
+        cur.assign((size_t) nl * (size_t) ne, 0);
+        g_mv.reset();
+        on = true;
+    }
+    static int bucket(int32_t c) { return c <= 1 ? 0 : c == 2 ? 1 : c <= 4 ? 2 : c <= 8 ? 3 : c <= 16 ? 4 : c <= 32 ? 5 : 6; }
+
+    // one MoE layer of one chunk: `want_ids` the router's picks, `sent_ids` the dispatched ones, `cnt` the dispatched tokens per expert
+    void tally(int64_t l, int64_t T, int64_t k, const int32_t* want_ids, const int32_t* sent_ids, const std::vector<int32_t>& cnt,
+               const int32_t* res_row, const std::vector<char>& on_cpu, const strata::core::ExpertSource* src) {
+        if (!on || l < 0 || l >= n_layers) return;
+        if (l == 0 || layers == 0) tokens += T;
+        ++layers;
+        picks += T * k;
+        const size_t base = (size_t) l * (size_t) n_expert;
+        for (int64_t e = 0; e < n_expert; ++e) {
+            int c = FILE_;
+            if (res_row != nullptr && res_row[e] >= 0) c = VRAM;
+            else if (base + (size_t) e < g_es_lent.size() && g_es_lent[base + (size_t) e]) c = LENT;
+            else if (src != nullptr && (src->pinned(l, e) || !src->transient(l, e))) c = RAM;
+            cls[(size_t) e] = (uint8_t) c;
+            best[(size_t) e] = 255;
+        }
+        for (int64_t i = 0; i < T * k; ++i) {
+            const int32_t w = want_ids[(size_t) i], s = sent_ids[(size_t) i];
+            const int r = (int) (i % k);
+            if (w >= 0 && w < n_expert) ++want[cls[(size_t) w]];
+            if (s >= 0 && s < n_expert) {
+                const int c = cls[(size_t) s];
+                ++sent[c];
+                ++rank_p[c][r < 2 ? 0 : r < 6 ? 1 : 2];
+                if ((uint8_t) r < best[(size_t) s]) best[(size_t) s] = (uint8_t) r;
+            }
+        }
+        const int64_t nb = (int64_t) strata::kernels::cpu::expert_layout().blob_bytes(l);
+        for (int64_t e = 0; e < n_expert; ++e) {
+            const int32_t n = cnt[(size_t) e];
+            if (n <= 0) continue;
+            const int c = cls[(size_t) e], b = bucket(n);
+            ++experts[c];
+            ++hist_e[c][b];
+            hist_p[c][b] += n;
+            bytes[c] += nb;
+            if (best[(size_t) e] >= 6 && best[(size_t) e] != 255) { ++tail_e[c]; tail_p[c] += n; }
+            if (!on_cpu.empty() && on_cpu[(size_t) e]) { ++cpu_experts; cpu_picks += n; }
+            if (c == LENT || c == FILE_) {
+                if (!cur[base + (size_t) e] && base + (size_t) e < g_es_prev.size() && g_es_prev[base + (size_t) e]) ++again;
+                cur[base + (size_t) e] = 1;
+            }
+        }
+    }
+    void report() {
+        if (!on || picks == 0) return;
+        static const char* const names[NC] = {"vram", "lent", "ram", "file"};
+        std::string s;
+        char b[256];
+        std::snprintf(b, sizeof(b), "strata prefill experts: %lld tokens, %lld layer passes, %lld picks; router picks:",
+                      (long long) tokens, (long long) layers, (long long) picks);
+        s += b;
+        for (int c = 0; c < NC; ++c) { std::snprintf(b, sizeof(b), " %s %lld", names[c], (long long) want[c]); s += b; }
+        s += "; dispatched picks:";
+        for (int c = 0; c < NC; ++c) { std::snprintf(b, sizeof(b), " %s %lld", names[c], (long long) sent[c]); s += b; }
+        s += "; experts:";
+        for (int c = 0; c < NC; ++c) { std::snprintf(b, sizeof(b), " %s %lld", names[c], (long long) experts[c]); s += b; }
+        std::snprintf(b, sizeof(b), "; on the CPU %lld experts %lld picks; read from the file: lent %.0f MB, file tier %.0f MB",
+                      (long long) cpu_experts, (long long) cpu_picks, (double) bytes[LENT] / 1e6, (double) bytes[FILE_] / 1e6);
+        s += b;
+        s += "; tokens per expert (1|2|3-4|5-8|9-16|17-32|33+) experts/picks:";
+        for (int c = 0; c < NC; ++c) {
+            s += std::string(" ") + names[c] + " [";
+            for (int k = 0; k < NB; ++k) {
+                std::snprintf(b, sizeof(b), "%s%lld/%lld", k ? " " : "", (long long) hist_e[c][k], (long long) hist_p[c][k]);
+                s += b;
+            }
+            s += "]";
+        }
+        s += "; picks by rank (1-2|3-6|7-10):";
+        for (int c = 0; c < NC; ++c) {
+            std::snprintf(b, sizeof(b), " %s %lld|%lld|%lld", names[c], (long long) rank_p[c][0], (long long) rank_p[c][1],
+                          (long long) rank_p[c][2]);
+            s += b;
+        }
+        s += "; experts whose best rank is 7+ (experts/picks):";
+        for (int c = 0; c < NC; ++c) {
+            std::snprintf(b, sizeof(b), " %s %lld/%lld", names[c], (long long) tail_e[c], (long long) tail_p[c]);
+            s += b;
+        }
+        std::snprintf(b, sizeof(b), "; of the %lld experts read from the file, %lld were read from it by the previous run too",
+                      (long long) (experts[LENT] + experts[FILE_]), (long long) again);
+        s += b;
+        std::fprintf(stderr, "%s (STRATA_PREFILL_EXPERT_STATS)\n", s.c_str());
+        const auto v = [](const std::atomic<int64_t>& a) { return (long long) a.load(std::memory_order_relaxed); };
+        std::fprintf(stderr, "strata prefill moves: file tier: %lld experts %.0f MB read by the copy threads in %.0f ms of thread time, "
+                             "the launching thread waited %.0f ms for %lld of them; unpinned RAM: %lld experts %.0f MB copied in %.0f ms of "
+                             "thread time, waited %.0f ms for %lld; staged copies queued: %.0f ms (%.0f MB from the file, %.0f MB from RAM); "
+                             "pinned RAM straight to the GPU: %lld experts %.0f MB, queued in %.0f ms (STRATA_PREFILL_EXPERT_STATS)\n",
+                     v(g_mv.rd_n), (double) v(g_mv.rd_bytes) / 1e6, (double) v(g_mv.rd_us) / 1e3, (double) v(g_mv.w_file_us) / 1e3,
+                     v(g_mv.w_file_n), v(g_mv.cp_n), (double) v(g_mv.cp_bytes) / 1e6, (double) v(g_mv.cp_us) / 1e3,
+                     (double) v(g_mv.w_ram_us) / 1e3, v(g_mv.w_ram_n), (double) v(g_mv.st_us) / 1e3, (double) v(g_mv.st_file_bytes) / 1e6,
+                     (double) v(g_mv.st_ram_bytes) / 1e6, v(g_mv.dma_n), (double) v(g_mv.dma_bytes) / 1e6, (double) v(g_mv.dma_us) / 1e3);
+        g_es_prev.swap(cur);
+    }
+};
 }  // namespace
+
+// STRATA_PREFILL_EXPERT_STATS (diagnostic): the loan's slots, as the engine lends and returns them (see PrefillExpertStats)
+bool expert_stats_on() { return es_on(); }
+void expert_stats_note_lent(int64_t residency_index) {
+    if (residency_index < 0) return;
+    if ((size_t) residency_index >= g_es_lent.size()) g_es_lent.resize((size_t) residency_index + 1, 0);
+    g_es_lent[(size_t) residency_index] = 1;
+}
+void expert_stats_clear_lent() { std::fill(g_es_lent.begin(), g_es_lent.end(), (uint8_t) 0); }
 
 struct Prefill::MultiCtx {
     std::function<bool(size_t, const float*, int64_t, std::string&)> on_job;
@@ -2969,6 +3150,7 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
     // write it again for every prompt (a layout is reused as long as the chunk and the slots are the same)
     // STRATA_PREFILL_STANDIN (opt-in; off = nothing below runs): the stand-ins of each MoE layer's chunk, see PrefillStandin
     PrefillStandin sa(g.n_layers, g.n_expert, m.T, m.host_res != nullptr && m.cache != nullptr);
+    PrefillExpertStats es(g.n_layers, g.n_expert);   // STRATA_PREFILL_EXPERT_STATS (diagnostic; off = nothing of it runs)
     if (m.ids_identity != nullptr) mmq::iota(m.ids_identity, (int64_t) mmq_ids_rows((size_t) m.T), m.cs);
     // The PLE rows of a chunk are read from the model file on the host (an SSD read per missed row): the chunk
     // after this one is read on a thread while the GPU runs this one, into the other of two buffers.  The rows
@@ -4505,6 +4687,9 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
                                 ++n_cpu;
                             }
                         }
+                        if (es.on)   // STRATA_PREFILL_EXPERT_STATS: this layer's picks by where their expert comes from (host counts only)
+                            es.tally(l, T, K, want_h, ids_h, m.cnt, m.host_res ? m.host_res + (size_t) l * (size_t) m.g->n_expert : nullptr,
+                                     on_cpu, m.src);
                         // multi-GPU: the rows of the experts the peer computes go last, as one block [rows_local, T*K)
                         const bool pre_mmq = mmq_plan().any && mmq_plan().layer[(size_t) l];
                         std::vector<char> on_peer;
@@ -5069,22 +5254,33 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
                             const bool pinned = m.src->pinned(l, e);   // pinned: never transient
                             const uint8_t* b = pinned ? m.src->blob_stable(l, e) : nullptr;
                             if (pinned && !b) { err = "prefill: expert source has no blob"; return false; }
+                            const bool mv = mv_on();   // STRATA_PREFILL_EXPERT_STATS: time this expert's move (diagnostic)
                             if (pinned) {
                                 // DMA straight from the page-locked arena: the copy stream only waits for the slot
+                                const auto t0 = mv ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
                                 if (m.stage_live[sl]) cudaStreamWaitEvent(m.copy, m.used[m.used_of[sl]], 0);
                                 xcopy(m.stage_dev[sl], b, (size_t) lay.blob_bytes(l), m.copy);
+                                if (mv) { g_mv.dma_us += mv_us(t0); ++g_mv.dma_n; g_mv.dma_bytes += (int64_t) lay.blob_bytes(l); }
                                 ++stats_.experts_dma;
                                 if (phase_timers) lm_dma_n.fetch_add(1);
                             } else {
                                 // copied to a pinned buffer by the stager (waits only if it is behind), then DMA
                                 const auto tw = phase_timers ? Clock::now() : Clock::time_point{};
+                                const bool from_file = mv && m.stager->jobs[(size_t) job_of[j]].from != nullptr;
+                                const auto t0 = mv ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
                                 const uint8_t* hb = m.stager->wait(job_of[j]);
+                                if (mv) {
+                                    if (from_file) { g_mv.w_file_us += mv_us(t0); ++g_mv.w_file_n; g_mv.st_file_bytes += (int64_t) lay.blob_bytes(l); }
+                                    else { g_mv.w_ram_us += mv_us(t0); ++g_mv.w_ram_n; g_mv.st_ram_bytes += (int64_t) lay.blob_bytes(l); }
+                                }
                                 if (phase_timers) iss_lm_stage_us.fetch_add((int64_t) (ms_since(tw) * 1000.0));
                                 if (phase_timers) lm_staged_n.fetch_add(1);
+                                const auto t1 = mv ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
                                 if (m.stage_live[sl]) cudaStreamWaitEvent(m.copy, m.used[m.used_of[sl]], 0);
                                 if (hb == nullptr) note_copy(cudaErrorUnknown);   // the stager could not read it: stopped just below
                                 else xcopy(m.stage_dev[sl], hb, (size_t) lay.blob_bytes(l), m.copy);
                                 m.stager->issued_one(job_of[j], m.copy);
+                                if (mv) g_mv.st_us += mv_us(t1);
                             }
                             if (const int cb = copy_bad.load(); cb != 0) {
                                 err = std::string("prefill: an expert copy call failed: ") + cudaGetErrorString((cudaError_t) cb) + " (the prompt's experts are not trusted: the request stops)";
@@ -6087,6 +6283,7 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
         std::fprintf(stderr, "strata prefill: GDN_HASH %s\n", line.c_str());
     }
     sa.report();   // STRATA_PREFILL_STANDIN only
+    es.report();   // STRATA_PREFILL_EXPERT_STATS only
     return true;
 }
 
